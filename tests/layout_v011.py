@@ -8,13 +8,13 @@ OUT=ROOT/'screenshots_v011'
 OUT.mkdir(exist_ok=True)
 def page_html():
  s=(ROOT/'index.html').read_text()
- style=(ROOT/'style.css').read_text()
+ style=(ROOT/'style.css').read_text()+'\n'+(ROOT/'bomb-panel.css').read_text()
  core=re.sub(r'\bexport\s+','',(ROOT/'core.js').read_text())
  game=re.sub(r'^import\s+\{[^}]*\}\s+from\s+[\'"]\./core\.js[\'"];\s*','',(ROOT/'game.js').read_text(),count=1)
  assert 'ctx.globalAlpha=.72' in game
  assert 'ctx.strokeRect(-16,-18,35,42)' not in game
  game=game.replace('swingAt:(x,y)=>swingHand(x,y)','swingAt:(x,y)=>swingHand(x,y),redraw:()=>draw(performance.now())')
- s=s.replace('<link rel="stylesheet" href="style.css">','<style>'+style+'</style>')
+ s=s.replace('<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="bomb-panel.css">','<style>'+style+'</style>')
  sim='<script>window.__frames=0;window.requestAnimationFrame=(fn)=>{if(window.__frames++<2)setTimeout(()=>fn(performance.now()),10);return 1};window.setInterval=()=>0;</script>'
  return s.replace('<script type="module" src="game.js"></script>',sim+'<script>'+core+'\n'+game+'</script>')
 
