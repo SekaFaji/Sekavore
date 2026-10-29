@@ -23,3 +23,7 @@ The consumables and bomb drawers are independent. Drones use their own menu. Ore
 ## v0.12
 
 The Bombs quick panel uses two compact rows of reserved slots, a clear Basic Bomb selection, charge/recharge status, and a bottom-right Fire All control. Only Basic Bomb is functional. The Drone and Consumables systems remain independent.
+
+## v0.13
+
+The Consumables drawer uses a compact inventory layout with reserved selection and timing areas. No item use effects are enabled yet. Bomb and Drone systems remain independent.
