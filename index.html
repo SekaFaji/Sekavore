@@ -1,9 +1,9 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#59484c"><meta name="description" content="Sekavore is a browser-playable incremental mining game."><title>Sekavore</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="bomb-panel.css"><link rel="stylesheet" href="consumables-panel.css"><link rel="stylesheet" href="bomb-panel.css"></head><body>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#59484c"><meta name="description" content="Sekavore is a browser-playable incremental mining game."><title>Sekavore</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="bomb-panel.css"><link rel="stylesheet" href="consumables-panel.css"><link rel="stylesheet" href="hud-v016.css"><link rel="stylesheet" href="bomb-panel.css"></head><body>
 <div id="game" class="game">
  <div class="topbar">
-  <div class="hud-left"><div class="metertext"><b id="level">LV 1</b><span id="levelXp">0 / 28 XP</span></div><div class="meter"><div id="xpFill" class="xpfill"></div></div></div>
-  <div class="hud-right"><div class="resource"><span>◉</span><strong id="gold">0</strong></div><div class="resource"><span class="blue">◆</span><strong id="gems">0</strong></div></div>
-  <button id="hubBtn" class="top-icon miner-emblem" title="Open game menus" aria-label="Open game menus">♜</button>
+  <div class="hud-left"><div class="hud-gold"><span class="hud-coin" aria-hidden="true">◉</span><strong id="gold">0</strong><small>GOLD</small></div><div class="metertext"><b id="level">LV 1</b><span><em>XP</em> <span id="levelXp">0 / 28 XP</span></span></div><div class="meter"><div id="xpFill" class="xpfill"></div></div></div>
+  <div class="hud-right"><div class="resource"><span class="blue">◆</span><strong id="gems">0</strong><small>GEMS</small></div><div class="resource"><span class="prestige-symbol">✦</span><strong id="hudPrestige">0</strong><small>PRESTIGE</small></div></div>
+  <button id="hubBtn" class="top-icon miner-emblem" title="Open game menus" aria-label="Open game menus"><span class="emblem-pixel" aria-hidden="true">♜</span></button>
  </div>
  <div class="stage"><canvas id="field" width="360" height="602" aria-label="Interactive pixel art mining field"></canvas>
   <div class="fieldtop"> <button type="button" class="floor-badge" id="floorMapBtn" aria-label="Open floor map">FLOOR <strong id="floor">1</strong> <span id="floorName">Stone Mine · MAP ▸</span></button><div class="quota"><span id="quotaText">0 / 9</span><div class="meter"><div id="quotaFill"></div></div></div></div>
@@ -20,7 +20,7 @@
 
  </div>
  <nav class="dock" aria-label="Pinned game menus">
- <div class="dock-main"><button id="pin0" data-pin="0"><span>⛏</span><small>UPGRADES</small></button><button id="pin1" data-pin="1"><span>▣</span><small>CRAFT</small></button><button id="pin2" data-pin="2"><span>◉</span><small>SELL</small></button><button id="menuDock" data-menu="hub"><span>▦</span><small>MENU</small></button><button id="hubCloseDock" type="button" aria-label="Close Menu Hub"><span>✕</span><small>CLOSE</small></button></div>
+ <div class="dock-main"><button id="pin0" data-pin="0" aria-label="Craft"><span>▣</span><small>CRAFT</small></button><button id="pin1" data-pin="1" aria-label="Upgrades"><span>⛏</span><small>UPGRADES</small></button><button id="pin2" data-pin="2" aria-label="Sell"><span>◉</span><small>SELL</small></button><button id="menuDock" data-menu="hub"><span>▦</span><small>MENU</small></button><button id="hubCloseDock" type="button" aria-label="Close Menu Hub"><span>✕</span><small>CLOSE</small></button></div>
  <button id="shopDock" type="button" class="store-shortcut" aria-label="Open gem and purchase store"><span>▤</span><small>SHOP</small></button>
  </nav>
  <div id="overlay" class="overlay hidden" aria-hidden="true"><div class="panel"><header class="panel-head"><button id="backBtn" class="back" title="Back to menu">‹</button><h1 id="panelTitle">MENU</h1><button id="closeBtn" class="close" title="Close">×</button></header><div id="panelContent" class="panel-scroll"></div></div></div>
