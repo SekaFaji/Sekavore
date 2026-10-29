@@ -313,3 +313,10 @@
 .quick-drawer .drawer-foot span{color:#f2e7d9;line-height:1.25}
 .quick-drawer .drawer-foot button:disabled{filter:grayscale(1);opacity:.5}
 @media(max-width:365px){.quick-drawer .item-slot.empty-slot{min-height:29px}}
+
+
+/* v0.15 — live bomb charge visibility in left mining HUD. */
+.status-group .status-bomb{position:relative;min-height:33px;padding-bottom:9px}
+.status-group .status-bomb span{display:block;color:#f3d69d;font-size:9px;margin-top:1px}
+.status-group .status-bomb i{position:absolute;bottom:2px;left:2px;right:2px;height:3px;background:linear-gradient(to right,#89e6a2 0%,#89e6a2 var(--charge),#161723 var(--charge),#161723 100%);border:1px solid #554552}
+.right-resources .mineral-count{min-height:19px}
