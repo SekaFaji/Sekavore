@@ -4,6 +4,6 @@ A browser-playable incremental mining game.
 
 Play: https://sekafaji.github.io/Sekavore/
 
-Run `npm test` to check gameplay logic. The web build uses local browser saves.
+Run `npm test` to verify gameplay, and `python tests/hud_v016.py` for Chromium UI checks (requires Playwright and Chromium).
 
-Version 0.15 improves the main HUD recharge display, Bombs panel, and owned-only Consumables inventory. No extra bomb types or consumable effects are introduced.
+Current version: v0.16. The game stores progress in the local browser.
