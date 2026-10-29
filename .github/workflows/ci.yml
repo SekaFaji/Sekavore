@@ -17,5 +17,6 @@ jobs:
         run: |
           node --check core.js
           node --check game.js
+          node --check mining-art-v018.js
       - name: Run gameplay unit tests
         run: npm test
