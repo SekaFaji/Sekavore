@@ -1,6 +1,6 @@
 # Sekavore
 
-**Sekavore v0.6** is an original, browser-playable incremental mining game and a research prototype. Built with vanilla JavaScript, HTML and CSS. The project is not affiliated with Idle Obelisk Miner or Checkbox Entertainment; no extracted commercial assets or copyrighted gameplay code are included.
+**Sekavore v0.6** is a browser-playable incremental mining game built with vanilla JavaScript, HTML and CSS.
 
 ## Play on GitHub Pages
 
@@ -40,9 +40,9 @@ Open http://localhost:8080.
 
 GitHub Pages is a **static web host**, not an account or save-sync backend. Game progress uses the same per-browser local storage key as the previous v0.2–v0.6 prototype; players should export backups if changing browsers/devices. Mobile app packaging can be explored later without requiring an engine rewrite.
 
-## Research and licensing
+## Development notes
 
-All in-game prices and progression parameters are original approximations, not verified reconstructions of the commercial reference game's actual formulas. Avoid importing extracted APK assets into this public repository.
+Gameplay balance is actively being refined. The web build uses original game code and artwork. Game saves are stored locally in each browser.
 
 ## Latest patch
 
