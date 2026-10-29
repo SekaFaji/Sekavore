@@ -7,8 +7,15 @@ const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll
 let game=newGame();try{const raw=localStorage.getItem(SAVE_KEY);if(raw){const parsed=JSON.parse(raw);if(isValidSave(parsed))game=parsed;}}catch(e){console.warn('Save could not be loaded:',e)}
 // Save compatibility: v0.2/v0.3 saves do not contain pin preferences.
 if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];
+if(!Number.isFinite(game.bombCharge)||game.bombCharge<0)game.bombCharge=0;
 let offlineSummary=null;const elapsed=Math.max(0,(Date.now()-(game.lastSaved||Date.now()))/1000);if(elapsed>20){offlineSummary=offlineGrant(game,elapsed);}game.lastSaved=Date.now();
 let droneMotion={x:180,y:147,targetId:null,ready:false,flashUntil:0,lastImpact:null},hand={x:182,y:303,held:false,lastSwing:-1e6,swingUntil:0},selectedRock=null,currentMenu=null,craftBatch=1,toastUntil=0,bossFight=null,particles=[],rockId=1,rocks=[],time=0,lastTick=performance.now(),lastAttack=0,holdRock=null,holdPoint=null,holdStart=0,droneClock=0,autoClock=0,bombClock=0,frames=0,painted=0;
+const BOMB_RECHARGE_SECONDS=9;
+let lastBombTick=performance.now();
+const secs=s=>s<=0?'READY':s<60?s.toFixed(1)+'s':Math.floor(s/60)+'m '+(s%60).toFixed(0).padStart(2,'0')+'s';
+function bombRechargeInfo(){const cap=Math.max(0,game.bombMax||0),charges=Math.max(0,Math.min(cap,game.bombs||0));if(!cap||charges>=cap)return {charges,cap,remaining:0,full:0,progress:100,rate:BOMB_RECHARGE_SECONDS};const progress=Math.min(BOMB_RECHARGE_SECONDS,Math.max(0,game.bombCharge||0)),remaining=Math.max(0,BOMB_RECHARGE_SECONDS-progress);return {charges,cap,remaining,full:remaining+Math.max(0,cap-charges-1)*BOMB_RECHARGE_SECONDS,progress:100*progress/BOMB_RECHARGE_SECONDS,rate:BOMB_RECHARGE_SECONDS};}
+function advanceBombRecharge(delta){if(game.bombs>=game.bombMax){game.bombCharge=0;return;}game.bombCharge=Math.max(0,(game.bombCharge||0)+Math.max(0,delta));while(game.bombs<game.bombMax&&game.bombCharge>=BOMB_RECHARGE_SECONDS){game.bombs++;game.bombCharge-=BOMB_RECHARGE_SECONDS;}if(game.bombs>=game.bombMax)game.bombCharge=0;}
+
 function save(){game.lastSaved=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){notice('Browser storage blocked — use Export Save.');}}
 function eventLog(message){game.log.unshift({t:Date.now(),text:message});game.log=game.log.slice(0,80);}
 function notice(message){const el=$('toast');el.textContent=message;el.classList.add('show');toastUntil=performance.now()+2500;}
@@ -141,11 +148,12 @@ canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;con
 canvas.addEventListener('pointermove',e=>{if(!hand.held)return;const p=pointerPosition(e);holdPoint=p;hand.x=p.x;hand.y=p.y;});
 const stopHold=()=>{hand.held=false;holdRock=null;holdPoint=null};
 canvas.addEventListener('pointerup',stopHold);canvas.addEventListener('pointercancel',stopHold);canvas.addEventListener('lostpointercapture',stopHold);
-function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>(game.ore[o.id]||0)>0).slice(0,3);while(resourceCounters.length<2){const candidate=ORES.find(o=>!resourceCounters.includes(o));if(!candidate)break;resourceCounters.push(candidate);}
+function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>(game.ore[o.id]||0)>0).slice(0,4);while(resourceCounters.length<2){const candidate=ORES.find(o=>!resourceCounters.includes(o));if(!candidate)break;resourceCounters.push(candidate);}
  $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count"><strong>${fmt(game.ore[o.id]||0)}</strong><span style="color:${o.color}">◆</span></div>`).join('');
- $('statusGroup').innerHTML=`<button type="button" data-side="stats">LV <strong>${game.level}</strong></button><button type="button" data-side="floors">FLOOR <strong>${game.floor}</strong></button><button type="button" data-side="drones">DRONE <strong>${game.drone?'ON':'OFF'}</strong></button><button type="button" data-side="bombs">BOMBS <strong>${game.bombs}/${game.bombMax}</strong></button>`;
+ const charge=bombRechargeInfo();
+ $('statusGroup').innerHTML=`<button type="button" data-side="stats">LV <strong>${game.level}</strong></button><button type="button" data-side="floors">FLOOR <strong>${game.floor}</strong></button><button type="button" data-side="drones">DRONE <strong>${game.drone?'ON':'OFF'}</strong></button><button type="button" class="status-bomb" data-side="bombs">BOMBS <strong>${charge.charges}/${charge.cap}</strong><span>${charge.remaining?secs(charge.remaining):'FULL'}</span><i style="--charge:${charge.progress.toFixed(1)}%"></i></button>`;
  $('droneState').textContent=game.drone?'ACTIVE':'LOCKED';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);}
-let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}if(game.bombs<game.bombMax){bombClock+=.25;if(bombClock>=9){game.bombs++;bombClock=0;}}else bombClock=0;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
+let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}advanceBombRecharge(Math.min(1,Math.max(0,(now-lastBombTick)/1000)));lastBombTick=now;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
 function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
@@ -186,35 +194,26 @@ function renderQuickDrawer(){
  $('quickDrawer').dataset.kind=quickDrawer;
  let html='';
  if(consumables){
-  // Presentation only: do not invent usable items, amounts, timers, or effects.
-  // A distinct 3+21 slot inventory presentation with no fabricated item data or actions.
-  // Actual consumable ownership/effects can populate these slots in a future gameplay patch.
-  const slot=(i)=>`<div class="consumable-slot consumable-empty" role="img" aria-label="Empty consumable slot ${i+1}"></div>`;
-  html=`<div class="consumable-featured" aria-label="Three featured consumable slots">${Array.from({length:3},(_,i)=>slot(i)).join('')}</div>`+
-   `<div class="consumable-inventory" role="group" aria-label="Consumable inventory, empty">${Array.from({length:21},(_,i)=>slot(i+3)).join('')}</div>`+
-   `<div class="consumable-tools" aria-label="Selection and timing controls">`+
-   `<div class="consumable-selected" title="No item selected" aria-label="No consumable selected"></div>`+
-   `<div class="consumable-selection-meter" aria-hidden="true"></div>`+
-   `<div class="consumable-time-meter" title="Duration display unavailable" aria-label="No active item timer"><span aria-hidden="true">⌛</span></div>`+
-   `<button type="button" class="consumable-action-mini" disabled aria-disabled="true" aria-label="Item management unavailable">▤</button></div>`+
-   `<div class="consumable-footer"><div class="consumable-description" role="status">No consumables owned</div>`+
-   `<button type="button" class="consumable-use" disabled aria-disabled="true">USE</button></div>`;
+  const owned=(Array.isArray(game.consumables)?game.consumables:[]).filter(item=>item&&typeof item.id==='string'&&typeof item.name==='string'&&Number.isSafeInteger(item.qty)&&item.qty>0);
+  if(!owned.length){
+   html=`<div class="consumable-no-items"><span class="empty-graphic" aria-hidden="true">▣</span><strong>NO CONSUMABLES OWNED</strong><small>Items appear here when you obtain them.</small></div>`+
+    `<div class="consumable-footer"><div class="consumable-description">Inventory empty</div><button type="button" class="consumable-use" disabled aria-disabled="true">USE</button></div>`;
+  }else{
+   const slot=item=>`<div class="consumable-slot owned" aria-label="${esc(item.name)} × ${item.qty}" title="${esc(item.name)} × ${item.qty}"><span class="consumable-icon">${esc(item.icon||'✦')}</span><span class="consumable-count">${item.qty}</span></div>`;
+   html=`<div class="consumable-featured" aria-label="Featured consumables">${owned.slice(0,3).map(slot).join('')}</div>`+
+    (owned.length>3?`<div class="consumable-inventory" role="group" aria-label="Owned consumables">${owned.slice(3).map(slot).join('')}</div>`:'')+
+    `<div class="consumable-tools"><div class="consumable-selected"></div><div class="consumable-selection-meter"></div><div class="consumable-time-meter" aria-label="No active timer">⌛</div></div>`+
+    `<div class="consumable-footer"><div class="consumable-description">${owned.length} owned item type${owned.length===1?'':'s'} · effects unavailable</div><button type="button" class="consumable-use" disabled aria-disabled="true">USE</button></div>`;
+  }
  }else{
-  // One functional Basic Bomb. Empty slots reserve the reference layout; no other bombs are invented.
-  const available=game.bombs>0&&!bossFight;
-  const slot=(i)=>`<button type="button" class="bomb-inventory-slot ${i===0?'available selected':'unavailable'}" ${i?'disabled aria-disabled="true"':''} ${i===0?'data-draw-action="select-basic" aria-pressed="true" aria-label="Basic Bomb, '+game.bombs+' of '+game.bombMax+' charges"':'aria-label="Empty bomb slot"'}>`+
-   (i===0?`<span class="bomb-symbol" aria-hidden="true">✹</span><span class="bomb-count">${game.bombs}/${game.bombMax}</span>`:'')+`</button>`;
-  const firstRow=Array.from({length:5},(_,i)=>slot(i)).join('');
-  const secondRow=Array.from({length:7},(_,i)=>slot(i+5)).join('');
-  html=`<div class="bomb-panel-upper"><span>BOMB INVENTORY</span><span>${game.bombs} / ${game.bombMax} CHARGES</span></div>`+
-   `<div class="bomb-inventory" aria-label="Bomb inventory"><div class="bomb-row bomb-row-five">${firstRow}</div><div class="bomb-row bomb-row-seven">${secondRow}</div></div>`+
-   `<div class="bomb-selection" aria-live="polite"><div class="bomb-selected-icon" aria-hidden="true">✹</div>`+
-   `<div class="bomb-selected-label"><strong>BASIC BOMB</strong><small>FULL FIELD DAMAGE</small></div>`+
-   `<div class="bomb-recharge"><span>${game.bombs===game.bombMax?'FULL':'RECHARGING'}</span><small>${game.bombs===game.bombMax?'READY':'9s PER CHARGE'}</small></div></div>`+
-   `<div class="bomb-panel-footer"><div class="bomb-footer-status" aria-label="Basic Bomb selection status">`+
-   `<span>1 TYPE EQUIPPED</span><small>FIRE ALL USES 1 BASIC BOMB</small></div>`+
-   `<button type="button" class="bomb-fire-all" data-draw-action="fire" ${available?'':'disabled aria-disabled="true"'}>FIRE<br>ALL</button></div>`;
-
+  const charge=bombRechargeInfo(),available=game.bombs>0&&!bossFight;
+  html=`<div class="bomb-panel-upper"><span>BOMBS · 1 UNLOCKED</span><span>${charge.charges} / ${charge.cap} CHARGES</span></div>`+
+   `<div class="bomb-inventory" aria-label="Unlocked bomb types"><div class="bomb-row"><button type="button" class="bomb-inventory-slot available selected" data-draw-action="select-basic" aria-pressed="true" aria-label="Basic Bomb, ${charge.charges} of ${charge.cap} charges"><span class="bomb-symbol" aria-hidden="true">✹</span><span class="bomb-count">${charge.charges}/${charge.cap}</span></button></div></div>`+
+   `<div class="bomb-selection"><div class="bomb-selected-icon" aria-hidden="true">✹</div><div class="bomb-selected-label"><strong>BASIC BOMB</strong><small>FULL FIELD DAMAGE</small></div></div>`+
+   `<div class="bomb-timing" aria-live="off"><div class="bomb-timing-row"><span>RECHARGE RATE</span><strong>1 / ${charge.rate}s</strong></div><div class="bomb-timing-row"><span>NEXT CHARGE</span><strong>${secs(charge.remaining)}</strong></div>`+
+   `<div class="bomb-progress" role="progressbar" aria-label="Bomb charge progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(charge.progress)}"><span style="width:${charge.progress.toFixed(2)}%"></span></div>`+
+   `<div class="bomb-timing-row"><span>TIME UNTIL FULL</span><strong>${secs(charge.full)}</strong></div></div>`+
+   `<div class="bomb-panel-footer"><div class="bomb-footer-status"><span>1 BOMB TYPE UNLOCKED</span><small>FIRE ALL USES 1 BASIC BOMB</small></div><button type="button" class="bomb-fire-all" data-draw-action="fire" ${available?'':'disabled aria-disabled="true"'}>FIRE<br>ALL</button></div>`;
  }
  $('drawerContent').innerHTML=html;
 }
@@ -288,7 +287,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  return `<div class="resource-line"><div class="resource-glyph" style="color:${o.color}">◆</div><div class="resource-body"><strong>${o.name} ${k==='craft'?'Bar':'Ore'}</strong><span>${desc}</span><small>${cost}</small></div><div class="resource-actions">${k==='sell'?`<button title="${locked?'Unlock':'Lock'} ${o.name}" aria-label="${locked?'Unlock':'Lock'} ${o.name}" class="micro-btn lock-icon ${locked?'chosen':''}" data-act="lock:${o.id}">${locked?'🔒':'🔓'}</button>`:''}<button class="micro-btn buy ${!can?'muted':''}" data-act="${k}:${o.id}" ${!can?'disabled':''}>${k==='craft'?'CRAFT':'SELL'}</button></div></div>`;
  }).join('');
  }else if(k==='bombs'){
- title='BOMBS';html=`<div class="section-label">BOMB CHARGES</div><div class="summary">${cell('AVAILABLE',game.bombs+' / '+game.bombMax)}${cell('BLAST DMG',bombDamage(game))}${cell('RECHARGE','9s / CHARGE')}</div>`+
+ title='BOMBS';html=`<div class="section-label">BOMB CHARGES</div><div class="summary">${cell('AVAILABLE',game.bombs+' / '+game.bombMax)}${cell('BLAST DMG',bombDamage(game))}${cell('RECHARGE','1 / '+BOMB_RECHARGE_SECONDS+'s')}</div>`+
  `<div class="resource-line"><div class="resource-glyph">✹</div><div class="resource-body"><strong>BASIC BOMB</strong><span>Hits the full visible mining field</span><small>${game.bombs} charges available · no damage to the boss</small></div><div class="resource-actions"><button class="micro-btn buy" data-act="bomb" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div></div>`+
  `<div class="tiny-help">The bomb button is also on the right side of the mining field. Recharge continues automatically while you mine.</div>`;
  }else if(k==='drones'){
@@ -385,4 +384,4 @@ $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn'
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
 // Expose a small read-only debugging surface for automated smoke tests. Not part of game UI.
-window.__deepMineTest={snapshot:()=>structuredClone(game),openMenu,rockCount:()=>rocks.length,rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),drone:()=>({...droneMotion}),swingAt:(x,y)=>swingHand(x,y)};
+window.__deepMineTest={bombRecharge:()=>bombRechargeInfo(),advanceBombRecharge,renderQuickDrawer,snapshot:()=>structuredClone(game),openMenu,rockCount:()=>rocks.length,rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),drone:()=>({...droneMotion}),swingAt:(x,y)=>swingHand(x,y)};
