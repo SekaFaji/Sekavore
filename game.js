@@ -156,8 +156,18 @@ function renderQuickDrawer(){
  let html='';
  if(consumables){
   // Presentation only: do not invent usable items, amounts, timers, or effects.
-  html=`<div class="drawer-section-label">CONSUMABLE ITEMS</div><div class="item-grid item-only-grid" aria-label="Empty consumable slots">${Array.from({length:14},()=>'<div class="item-slot empty-slot" aria-hidden="true"></div>').join('')}</div>`+
-   `<div class="drawer-foot"><span>No consumables are available yet.</span><button type="button" disabled>USE</button></div>`;
+  // A distinct 3+21 slot inventory presentation with no fabricated item data or actions.
+  // Actual consumable ownership/effects can populate these slots in a future gameplay patch.
+  const slot=(i)=>`<div class="consumable-slot consumable-empty" role="img" aria-label="Empty consumable slot ${i+1}"></div>`;
+  html=`<div class="consumable-featured" aria-label="Three featured consumable slots">${Array.from({length:3},(_,i)=>slot(i)).join('')}</div>`+
+   `<div class="consumable-inventory" role="group" aria-label="Consumable inventory, empty">${Array.from({length:21},(_,i)=>slot(i+3)).join('')}</div>`+
+   `<div class="consumable-tools" aria-label="Selection and timing controls">`+
+   `<div class="consumable-selected" title="No item selected" aria-label="No consumable selected"></div>`+
+   `<div class="consumable-selection-meter" aria-hidden="true"></div>`+
+   `<div class="consumable-time-meter" title="Duration display unavailable" aria-label="No active item timer"><span aria-hidden="true">⌛</span></div>`+
+   `<button type="button" class="consumable-action-mini" disabled aria-disabled="true" aria-label="Item management unavailable">▤</button></div>`+
+   `<div class="consumable-footer"><div class="consumable-description" role="status">No consumables owned</div>`+
+   `<button type="button" class="consumable-use" disabled aria-disabled="true">USE</button></div>`;
  }else{
   // One functional Basic Bomb. Empty slots reserve the reference layout; no other bombs are invented.
   const available=game.bombs>0&&!bossFight;
