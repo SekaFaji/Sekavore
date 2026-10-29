@@ -6,4 +6,4 @@
 - Added a pull-request test workflow and a deployment workflow for GitHub Pages.
 - All 12 JavaScript logic tests pass locally.
 
-**Reference fidelity:** This is still a research-inspired approximation. Obelisk Miner's proprietary assets, engine code, and audio are not included.
+**Development note:** Visual refinements and progression balancing are ongoing.
