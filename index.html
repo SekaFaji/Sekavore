@@ -1,0 +1,27 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#59484c"><meta name="description" content="Unofficial original browser research prototype of deep incremental mining mechanics."><title>Sekavore — Research Build</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="game" class="game">
+ <div class="topbar">
+  <div class="hud-left"><div class="metertext"><b id="level">LV 1</b><span id="levelXp">0 / 28 XP</span></div><div class="meter"><div id="xpFill" class="xpfill"></div></div></div>
+  <div class="hud-right"><div class="resource"><span>◉</span><strong id="gold">0</strong></div><div class="resource"><span class="blue">◆</span><strong id="gems">0</strong></div></div>
+  <button id="hubBtn" class="top-icon" title="Open game menus" aria-label="Open game menus">▦</button>
+ </div>
+ <div class="stage"><canvas id="field" width="360" height="602" aria-label="Interactive pixel art mining field"></canvas>
+  <div class="fieldtop"> <button type="button" class="floor-badge" id="floorMapBtn" aria-label="Open floor map">FLOOR <strong id="floor">1</strong> <span id="floorName">Stone Mine · MAP ▸</span></button><div class="quota"><span id="quotaText">0 / 9</span><div class="meter"><div id="quotaFill"></div></div></div></div>
+  <div class="side-left"><div class="chest-head">▣</div><div class="vertical-bar"><div id="chestFill"></div></div><div class="chest-head pink">✦</div><div class="vertical-bar second"><div id="starFill"></div></div></div>
+  <div class="side-right"><button type="button" id="oreBagBtn" class="ore-count" aria-label="Open ore bag">⬡ <strong id="floorOre">0</strong><small>ORE BAG ▸</small></button><button id="floorUp" class="control red" title="Next deeper floor">▲</button><button id="floorDown" class="control red" title="Previous shallower floor">▼</button><button id="autoFloor" class="control small">AUTO<br><span id="autoFloorState">OFF</span></button></div>
+  <div id="hint" class="hint">TAP OR HOLD ROCKS TO MINE</div>
+  <div id="targetHud" class="target-hud hidden" aria-live="off"><span class="target-gem" id="targetGem">◆</span><div class="target-info"><strong id="targetName">ROCK</strong><small id="targetHpText">HP 0 / 0</small><div class="target-meter"><div id="targetHpFill"></div></div></div></div>
+  <div id="toast" class="toast" role="status"></div>
+  <div class="fieldfooter"><button id="bombBtn" class="action-big" aria-label="Explode a basic bomb"><span class="symbol">✹</span><span>BLAST <small id="bombCount">3/3</small></span></button><button id="droneQuick" class="action-big" aria-label="Drone settings"><span class="symbol">◇</span><span>DRONE <small id="droneState">LOCKED</small></span></button><button id="bossQuick" class="action-big" aria-label="Obelisk fight"><span class="symbol">♜</span><span>OBELISK <small id="bossStage">Lv 0</small></span></button></div>
+ </div>
+ <nav class="dock" aria-label="Pinned game menus">
+ <button id="pin0" data-pin="0"><span>⛏</span><small>UPGRADES</small></button>
+ <button id="pin1" data-pin="1"><span>▣</span><small>CRAFT</small></button>
+ <button id="pin2" data-pin="2"><span>◉</span><small>SELL</small></button>
+ <button id="menuDock" data-menu="hub"><span>▦</span><small>MENU</small></button>
+ </nav>
+ <div id="overlay" class="overlay hidden" aria-hidden="true"><div class="panel"><header class="panel-head"><button id="backBtn" class="back" title="Back to menu">‹</button><h1 id="panelTitle">MENU</h1><button id="closeBtn" class="close" title="Close">×</button></header><div id="panelContent" class="panel-scroll"></div></div></div>
+ <div id="confirm" class="confirm hidden"><div class="confirm-box"><h2 id="confirmTitle">Are you sure?</h2><p id="confirmBody"></p><div class="confirm-actions"><button id="confirmCancel" class="btn">CANCEL</button><button id="confirmYes" class="btn danger">CONFIRM</button></div></div></div>
+</div>
+<p class="below">SEKAVORE — independent mechanics research prototype. Original procedural art and code. Inspired by publicly documented idle-mining systems; not affiliated with Obelisk Miner or Checkbox Entertainment. Gameplay balance is approximate.</p>
+<script type="module" src="game.js"></script></body></html>
