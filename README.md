@@ -1,30 +1,22 @@
-# Sekavore — v0.8
+# Sekavore
 
-Sekavore is a browser-playable portrait incremental mining game built with JavaScript, HTML and CSS.
+A browser-playable incremental mining game.
 
-## Run locally
+## Play
 
-```sh
-npm test
-python3 -m http.server 8080
-```
+Open https://sekafaji.github.io/Sekavore/ to play in a browser. Progress is saved locally per browser.
 
-Open `http://localhost:8080` or use the GitHub Pages deployment from `main`.
+## Development
 
-## Project structure
+Run `npm test` for gameplay tests, or `python3 -m http.server 8080` for local play.
 
-- `core.js`: gameplay rules, rewards, resources, and progression.
-- `game.js`: browser UI, input, menus, and saved preferences.
-- `style.css`: mobile and desktop layouts.
-- `tests/`: gameplay and interface checks.
-- `.github/workflows/`: pull-request validation and web deployment.
+- `core.js` — mining economy, saves, targeting calculations
+- `game.js` — rendering, inputs, menus
+- `style.css` — responsive visual layout
+- `index.html` — browser shell
 
-## Development workflow
+Changes should be reviewed through feature branches and pull requests. The main branch is published to GitHub Pages.
 
-Create a patch branch from `main`, open a pull request, run the checks, and merge after reviewing the captured screens. Each merge into `main` publishes the website through GitHub Pages.
+## Latest changes
 
-## v0.8
-
-The Menu Hub now displays over the visible mining field, with a more compact four-column button grid, narrow section headers, small icon-first tiles with labels below, muted lock states, and an explicit close button in the bottom dock. The other menus retain their existing layout. No progression formulas or save structure changed.
-
-Browser saves remain local to each device; export a backup before changing devices or browsers.
+See `PATCH_NOTES_v0.9.md` for the hand and controls update.

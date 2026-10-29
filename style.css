@@ -257,3 +257,17 @@
 /* Avoid overlaying the game's tutorial prompt on top of the Hub labels. */
 .hub-visible #hint{visibility:hidden}
 .hub-visible .fieldtop,.hub-visible .side-right,.hub-visible .side-left,.hub-visible .fieldfooter{opacity:.4}
+
+/* v0.9 right-hand mining controls; replaces the field-bottom giant utility cards */
+.side-right{right:5px;top:50px;gap:6px;align-items:center;pointer-events:none;}
+.side-right button{pointer-events:auto;}
+.right-tools{position:relative;display:flex;align-items:center;flex-direction:column;gap:8px;margin-top:20px;}
+.rail-action{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:44px;height:52px;border:3px solid #1f1118;border-radius:6px;background:linear-gradient(#c94b50,#9c2c38);box-shadow:inset 1px 1px #f0958b,inset -2px -2px #701d28,1px 2px #1c1420;color:#fff2d9;}
+.rail-action .rail-symbol{font-size:24px;line-height:26px;color:#ffd583;text-shadow:2px 2px #3b2021;}
+.rail-action small{font-size:9px;color:#fff5e2;line-height:11px;}
+.rail-action:disabled{background:linear-gradient(#4d444c,#302c36);opacity:.65;}
+.rail-action.consumable .rail-symbol{color:#89d7d1;}
+.rail-info{position:absolute;top:1px;left:-14px;width:16px;height:17px;border:1px solid #bba396;background:#3b333d;color:#fff4d4;font-size:10px;border-radius:50%;padding:0;line-height:13px;}
+.floor-controls{display:flex;flex-direction:column;align-items:center;gap:5px;margin-top:55px;}
+.floor-controls .control{width:42px;min-height:39px;}
+@media(max-width:365px){.right-tools{margin-top:12px}.floor-controls{margin-top:36px}.rail-action{width:40px;height:48px}}

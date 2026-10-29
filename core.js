@@ -71,3 +71,10 @@ export function prestige(s){let pts=availablePrestige(s);if(!pts)return 0;let fr
 export function offlineGrant(s,elapsed){const seconds=Math.max(0,Math.min(elapsed,4*3600));if(!s.drone||seconds<2)return {seconds,rocks:0,ore:0};const attacks=Math.min(10000,Math.floor(seconds/(5/Math.max(1,1+0.15*s.droneLevel))));let mined=0;for(let i=0;i<attacks;i++){const ore=oreAtFloor(s.floor,()=>((i*37)%101)/101);let dmg=Math.max(1,Math.floor(pickDamage(s)*(0.65+0.25*s.droneLevel+0.10*s.dronePoints)));if(i%(Math.max(1,Math.ceil(rockHealth(s.floor)/dmg)))===0){s.ore[ore.id]+=1;mined++;s.totalMined++;grantXp(s,1+s.floor);}}
 return {seconds,rocks:mined,ore:mined};}
 export function isValidSave(s){return !!s&&s.version===2&&Number.isFinite(s.gold)&&s.gold>=0&&Number.isFinite(s.level)&&s.level>=1&&Number.isFinite(s.floor)&&s.floor>=1&&ORES.every(o=>Number.isFinite(s.ore?.[o.id])&&s.ore[o.id]>=0)&&UPGRADE_DEFS.every(u=>Number.isInteger(s.upgrades?.[u.id])&&s.upgrades[u.id]>=0&&s.upgrades[u.id]<=u.cap)&&(!s.floorProgress||Object.values(s.floorProgress).every(v=>Number.isSafeInteger(v)&&v>=0))};
+
+// Area-of-effect hand targeting, kept separate from rendering and save state.
+export function handReach(s){return Math.round(48 * (1 + 0.08 * Math.max(0,s.upgrades?.radius||0)));}
+export function targetsInReach(rocks,x,y,radius){
+ if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(radius)||radius<=0)return [];
+ return rocks.filter(r=>r.hp>0 && Math.hypot(r.x-x,r.y-y)<=radius + Math.min(8,(r.size||0)*0.30));
+}

@@ -51,3 +51,14 @@ test('prestige clears all temporary per-floor progress',async()=>{
  const s=newGame();s.level=21;s.floorProgress[1]=10;s.rocksThisFloor=10;
  assert.ok(prestige(s)>0);assert.equal(s.floor,1);assert.equal(getFloorProgress(s,1),0);
 });
+
+test('hand radius targets all rocks in range, not only the first', async()=>{
+ const {handReach,targetsInReach}=await import('../core.js');
+ const s=newGame(); const points=[{x:10,y:10,hp:10,size:14},{x:30,y:15,hp:10,size:14},{x:110,y:80,hp:10,size:14}];
+ assert.equal(handReach(s),48);
+ assert.equal(targetsInReach(points,15,14,handReach(s)).length,2);
+ s.upgrades.radius=5;
+ assert.equal(handReach(s),67);
+ assert.equal(targetsInReach(points,15,14,handReach(s)).length,2);
+ assert.equal(targetsInReach(points,Number.NaN,14,50).length,0);
+});
