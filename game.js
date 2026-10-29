@@ -1,4 +1,5 @@
 import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
+import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
 
 const $=id=>document.getElementById(id);const canvas=$('field');let ctx=canvas.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const SAVE_KEY='deep-mine-research-v2';
@@ -25,7 +26,7 @@ function spawnRocks(){rocks=[];selectedRock=null;droneMotion.targetId=null;drone
 spawnRocks();
 function restoreFloorIfNeeded(){if(!rocks.length)spawnRocks();}
 function spark(x,y,label,color='#fff3db',qty=1){if(particles.length>110)particles.splice(0,10);particles.push({x,y,label,color,ttl:0.9,dx:(Math.random()-.5)*28,dy:-26-Math.random()*18});for(let i=0;i<qty;i++)particles.push({x:x+(Math.random()-.5)*12,y:y+(Math.random()-.5)*8,label:null,color,ttl:.30+Math.random()*.25,dx:(Math.random()-.5)*38,dy:(Math.random()-.5)*47});}
-function mineRock(rock,mode='tap',power=1){if(!rock||!rocks.includes(rock)||bossFight)return;const dmg=mode==='drone'?Math.max(1,Math.round(pickDamage(game)*(.6+.2*game.droneLevel+.10*game.dronePoints))):Math.round(damageRoll(game)*power);rock.hp-=dmg;spark(rock.x,rock.y-8,fmt(dmg),dmg>pickDamage(game)?'#ffdb67':'#f1efde',1);if(mode==='tap'){game.totalClicks++;playSfx('hit');}if(rock.hp<=0){if(selectedRock===rock)selectedRock=null;const ore=ORES.find(o=>o.id===rock.ore)||ORES[0];const amt=(Math.random()<.03*(game.upgrades.multirock||0))?2:1;awardRock(game,ore,amt);spark(rock.x,rock.y,'+'+amt+' '+ore.name,'#8ce7c0',4);rocks.splice(rocks.indexOf(rock),1);if(rocks.length<=9)spawnSingleRock();if(canNextFloor(game)){if(game.autoFloor){travelToFloor(game,game.floor+1);spawnRocks();notice('DESCENDED TO FLOOR '+game.floor);eventLog('Reached floor '+game.floor);}else if(game.rocksThisFloor===floorQuota(game.floor)){notice('FLOOR CLEARED! ▲ TO DESCEND');}}if(game.rocksBroken%13===0){game.gems+=1;spark(rock.x,rock.y-23,'+1 ◆','#49d8f2',4);}save();}}
+function mineRock(rock,mode='tap',power=1){if(!rock||!rocks.includes(rock)||bossFight)return;const dmg=mode==='drone'?Math.max(1,Math.round(pickDamage(game)*(.6+.2*game.droneLevel+.10*game.dronePoints))):Math.round(damageRoll(game)*power);rock.hp-=dmg;recordMiningImpact(rock.x,rock.y,(ORES.find(o=>o.id===rock.ore)||ORES[0]).color,rock.hp<=0);spark(rock.x,rock.y-8,fmt(dmg),dmg>pickDamage(game)?'#ffdb67':'#f1efde',1);if(mode==='tap'){game.totalClicks++;playSfx('hit');}if(rock.hp<=0){if(selectedRock===rock)selectedRock=null;const ore=ORES.find(o=>o.id===rock.ore)||ORES[0];const amt=(Math.random()<.03*(game.upgrades.multirock||0))?2:1;awardRock(game,ore,amt);spark(rock.x,rock.y,'+'+amt+' '+ore.name,'#8ce7c0',4);rocks.splice(rocks.indexOf(rock),1);if(rocks.length<=9)spawnSingleRock();if(canNextFloor(game)){if(game.autoFloor){travelToFloor(game,game.floor+1);spawnRocks();notice('DESCENDED TO FLOOR '+game.floor);eventLog('Reached floor '+game.floor);}else if(game.rocksThisFloor===floorQuota(game.floor)){notice('FLOOR CLEARED! ▲ TO DESCEND');}}if(game.rocksBroken%13===0){game.gems+=1;spark(rock.x,rock.y-23,'+1 ◆','#49d8f2',4);}save();}}
 // One sweep hits every rock inside the hand's radius; it never locks to a single rock.
 function swingHand(x=hand.x,y=hand.y){
  if(currentMenu||bossFight)return 0;
@@ -84,38 +85,9 @@ const col={wall:'#6e7382',wall2:'#4f5567',cave:'#454b5b',cave2:'#343b49',crack:'
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.floor(x),Math.floor(y),Math.ceil(w),Math.ceil(h));}
 function poly(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(points[0][0],points[0][1]);for(let i=1;i<points.length;i++)ctx.lineTo(points[i][0],points[i][1]);ctx.closePath();ctx.fill();}
 function rand(x,y,k=1){let z=Math.sin((x*127.1+y*311.7+k*74.7)*.2)*43758.5453;return z-Math.floor(z)}
-const groundCanvas=document.createElement('canvas');groundCanvas.width=360;groundCanvas.height=602;const groundContext=groundCanvas.getContext('2d',{alpha:false});let cachedFloor=-1;
-function drawGround(){
- if(cachedFloor!==game.floor){
-  const normalCtx=ctx;ctx=groundContext;const mode=Math.floor((game.floor-1)/5)%4;
-  const palette=[['#555d6c','#484f60','#3b4352','#303846'],['#685953','#594d50','#48404b','#392e3b'],['#5b6b73','#4d5d69','#394958','#303c4a'],['#68565d','#564550','#493846','#342a35']][mode];
-  rect(0,0,360,602,palette[3]);
-  // Hand-authored polygon grammar generates a repeatable pebble/cave-floor texture.
-  // Geometry and colors are new, rather than copied from proprietary sprite atlases.
-  for(let gy=-2;gy<44;gy++)for(let gx=-2;gx<25;gx++){
-   const rowShift=(gy%2)*8;const cx=gx*16+rowShift+rand(gx,gy,1)*4,cy=gy*14+rand(gx,gy,2)*4;
-   const d=rand(gx,gy,3),s=6+rand(gx,gy,4)*3,sy=5+rand(gx,gy,5)*2;
-   const points=[];for(let j=0;j<8;j++){const a=j*Math.PI/4;const jitter=.85+rand(gx+j,gy-j,7)*.25;points.push([Math.round(cx+Math.cos(a)*s*jitter),Math.round(cy+Math.sin(a)*sy*jitter)]);}
-   poly(points,d>.77?palette[0]:d>.35?palette[1]:palette[2]);
-   rect(cx-s*.57,cy-sy*.55,Math.max(2,s*.7),2,'#81889333');
-  }
-  // Rough boulder columns at the cavern edges.
-  for(let y=-13;y<602;y+=25){for(const side of [-9,339]){
-    const off=rand(side,y,1)*6,h=17+rand(side,y,4)*8;
-    poly([[side+1+off,y],[side+28,y+2],[side+32,y+9],[side+29,y+h],[side+8,y+h-2],[side-3,y+12]],palette[3]);
-    poly([[side+2+off,y],[side+24,y+2],[side+28,y+7],[side+25,y+h*.55],[side+7,y+h*.65],[side-1,y+11]],'#858895');
-    rect(side+7,y+3,15,3,'#adb0b5');
-  }}
-  rect(0,0,360,6,'#29222c');rect(0,597,360,5,'#25212c');ctx=normalCtx;cachedFloor=game.floor;
- }
- ctx.drawImage(groundCanvas,0,0);
-}
-function drawRock(r){let x=Math.round(r.x),y=Math.round(r.y),z=Math.round(r.size||15);const o=ORES.find(o=>o.id===r.ore)||ORES[0];rect(x-z+2,y+z*.48,z*2,5,'#181b2799');const v=r.variant||0;let color='#454652',mid=['#676c7a','#676d78','#646473','#727781'][v],top='#9198a2';// distinct original procedural cluster, not original game sprites
-poly([[x-z,y+z*.2],[x-z+3,y-z*.55],[x-z*.25,y-z],[x+z*.47,y-z*.83],[x+z,y-z*.15],[x+z*.8,y+z*.56],[x,y+z*.72]],color);
-poly([[x-z+3,y-z*.45],[x-z*.25,y-z],[x+z*.32,y-z*.78],[x+z*.15,y+z*.08],[x-z*.35,y+z*.26],[x-z*.88,y]],mid);
-rect(x-z*.6,y-z*.55,z*.50,3,top);rect(x+z*.18,y-z*.36,z*.34,3,'#878b9a');rect(x-z*.3,y+z*.26,z*.85,4,'#323644');
-if(r.ore!=='tin'){rect(x+1,y-z*.55,4,7,o.edge);rect(x+2,y-z*.5,3,5,o.color);rect(x-z*.58,y+1,3,5,o.color);}else{rect(x+z*.2,y-6,4,3,'#a4a9af');}
-if(r.hp<r.max){rect(x-z,y-z-11,2*z,4,'#1a1c25');rect(x-z+1,y-z-10,(2*z-2)*Math.max(0,r.hp/r.max),2,'#cb736c');}}
+// Procedural field visuals live separately from gameplay and economy rules.
+function drawGround(){drawCavernGround(ctx,game.floor);}
+function drawRock(r){drawCavernRock(ctx,r,ORES);}
 function updateTarget(){
  const hud=$('targetHud');
  if(!selectedRock||!rocks.includes(selectedRock)||bossFight){hud.classList.add('hidden');return;}
@@ -139,7 +111,7 @@ function drawDrone(){
 }
 function drawObelisk(){drawGround();rect(29,44,303,62,'#1b2029bd');rect(37,52,286,2,'#9e8d82');txt('HP  '+fmt(game.bossRemaining)+' / '+fmt(bossMax()),180,63,'#baf7b5',12,'center');txt('ARMOR  '+fmt(bossArmor(game.obeliskLevel)),180,80,'#d1dc9a',11,'center');txt('TIME  '+Math.ceil(Math.max(0,(bossFight.end-performance.now())/1000))+'s',180,97,'#f2c682',11,'center');const p=time;rect(67,476,226,18,'#221b2c');for(let i=0;i<28;i++){let a=rand(i,4);rect(40+i*10,180+a*240,1,2,a>.5?'#ae9c62':'#7e598a');}ctx.save();ctx.translate(180,305+Math.sin(p*2)*3);const glow=ctx.createRadialGradient(0,0,10,0,0,132);glow.addColorStop(0,'#95c1735e');glow.addColorStop(1,'#96e47b00');ctx.fillStyle=glow;ctx.fillRect(-130,-170,260,330);poly([[-52,75],[-62,-51],[-33,-95],[0,-127],[41,-93],[59,-46],[48,78]],'#162c32');poly([[-45,70],[-55,-43],[-27,-84],[-27,63]],'#417c68');poly([[-27,-84],[0,-116],[33,-84],[35,70],[-27,63]],'#273e3c');poly([[35,-79],[51,-39],[44,70],[35,70]],'#81ba67');for(let i=0;i<4;i++){const x=-34+i*19;poly([[x,-45],[x+8,-51],[x+8,43],[x+1,55]],i%2?'#98eb9c':'#d8d47d');rect(x+2,-60+i*7,5,5,'#f5fbab');}rect(-18,-95,35,6,'#b8f7a0');rect(-5,65,11,7,'#adf77c');ctx.restore();txt('TAP THE OBELISK TO ATTACK',180,526,'#f4e0bd',11,'center');}
 function txt(str,x,y,color='#fff',size=12,align='left'){ctx.font='bold '+size+'px monospace';ctx.textAlign=align;ctx.fillStyle='#191622';ctx.fillText(str,x+1,y+2);ctx.fillStyle=color;ctx.fillText(str,x,y);ctx.textAlign='left';}
-function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();if(!rocks.length)spawnSingleRock();drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
+function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();if(!rocks.length)spawnSingleRock();drawMiningImpacts(ctx);drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
 function pointerPosition(e){const box=canvas.getBoundingClientRect();return {x:(e.clientX-box.left)*360/box.width,y:(e.clientY-box.top)*602/box.height};}
 canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;const p=pointerPosition(e);
  hand.x=p.x;hand.y=p.y;hand.held=true;holdPoint=p;holdStart=performance.now();lastAttack=holdStart;
