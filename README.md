@@ -4,19 +4,14 @@ A browser-playable incremental mining game.
 
 ## Play
 
-Open https://sekafaji.github.io/Sekavore/ to play in a browser. Progress is saved locally per browser.
+Open https://sekafaji.github.io/Sekavore/ to play in a browser.
+
+## Test
+
+Run `npm test` for gameplay tests. The browser UI test is in `tests/layout_v010.py` and can produce visual captures with Chromium/Playwright.
 
 ## Development
 
-Run `npm test` for gameplay tests, or `python3 -m http.server 8080` for local play.
+The interface is designed for portrait touch screens. Progress is saved locally in the browser; export before switching devices or clearing browser data.
 
-- `core.js` — mining economy, saves, targeting calculations
-- `game.js` — rendering, inputs, menus
-- `style.css` — responsive visual layout
-- `index.html` — browser shell
-
-Changes should be reviewed through feature branches and pull requests. The main branch is published to GitHub Pages.
-
-## Latest changes
-
-See `PATCH_NOTES_v0.9.md` for the hand and controls update.
+Development changes are reviewed in GitHub pull requests and published to Pages from `main`.
