@@ -102,7 +102,7 @@ function drawObelisk(){drawGround();rect(29,44,303,62,'#1b2029bd');rect(37,52,28
 function txt(str,x,y,color='#fff',size=12,align='left'){ctx.font='bold '+size+'px monospace';ctx.textAlign=align;ctx.fillStyle='#191622';ctx.fillText(str,x+1,y+2);ctx.fillStyle=color;ctx.fillText(str,x,y);ctx.textAlign='left';}
 function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();if(!rocks.length)spawnSingleRock();drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
 function pointerPosition(e){const box=canvas.getBoundingClientRect();return {x:(e.clientX-box.left)*360/box.width,y:(e.clientY-box.top)*602/box.height};}
-canvas.addEventListener('pointerdown',e=>{if(currentMenu)return;const p=pointerPosition(e);
+canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;const p=pointerPosition(e);
  hand.x=p.x;hand.y=p.y;hand.held=true;holdPoint=p;holdStart=performance.now();lastAttack=holdStart;
  try{canvas.setPointerCapture(e.pointerId)}catch{}
  if(bossFight){if(p.y>120&&p.y<482)attackObelisk(damageRoll(game));return;}
@@ -110,8 +110,11 @@ canvas.addEventListener('pointerdown',e=>{if(currentMenu)return;const p=pointerP
 canvas.addEventListener('pointermove',e=>{if(!hand.held)return;const p=pointerPosition(e);holdPoint=p;hand.x=p.x;hand.y=p.y;});
 const stopHold=()=>{hand.held=false;holdRock=null;holdPoint=null};
 canvas.addEventListener('pointerup',stopHold);canvas.addEventListener('pointercancel',stopHold);canvas.addEventListener('lostpointercapture',stopHold);
-function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';$('floorOre').textContent=fmt(Object.values(game.ore).reduce((a,b)=>a+b,0));$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('bombCount').textContent=game.bombs+'/'+game.bombMax;$('bombBtn').disabled=game.bombs<1||!!bossFight;$('autoFloorState').textContent=game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);}
-let lastMenuRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneHit();}}}if(game.bombs<game.bombMax){bombClock+=.25;if(bombClock>=9){game.bombs++;bombClock=0;}}else bombClock=0;updateHud();if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
+function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>(game.ore[o.id]||0)>0).slice(0,3);while(resourceCounters.length<2){const candidate=ORES.find(o=>!resourceCounters.includes(o));if(!candidate)break;resourceCounters.push(candidate);}
+ $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count"><strong>${fmt(game.ore[o.id]||0)}</strong><span style="color:${o.color}">◆</span></div>`).join('');
+ $('statusGroup').innerHTML=`<button type="button" data-side="stats">LV <strong>${game.level}</strong></button><button type="button" data-side="floors">FLOOR <strong>${game.floor}</strong></button><button type="button" data-side="drones">DRONE <strong>${game.drone?'ON':'OFF'}</strong></button><button type="button" data-side="bombs">BOMBS <strong>${game.bombs}/${game.bombMax}</strong></button>`;
+ $('droneState').textContent=game.drone?'ACTIVE':'LOCKED';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);}
+let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneHit();}}}if(game.bombs<game.bombMax){bombClock+=.25;if(bombClock>=9){game.bombs++;bombClock=0;}}else bombClock=0;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
 function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
@@ -121,20 +124,38 @@ const TEMP_MENU=[
  ['sell','◉','SELL','Exchange ore for gold'],['contracts','▤','CONTRACTS','Not yet simulated']
 ];
 const PERM_MENU=[
- ['obelisk','♜','OBELISK','Fight · Rewards · Unlocks'],['prestige','✦','PRESTIGE','Reset for permanent power'],
- ['artifacts','◆','ARTIFACTS','Permanent bonuses'],['drones','◇','DRONES','Upgrades · Suits · Fuel'],
- ['workshop','⚒','WORKSHOP','Obelisk 1'],['skills','✥','SKILL TREE','Obelisk 4'],
- ['challenges','★','CHALLENGES','Obelisk 10'],['cards','▦','CARDS','Obelisk 15'],
- ['pets','♧','PETS','Obelisk 17'],['stars','✧','STARGAZING','Obelisk 23'],
- ['chests','▣','CHESTS','Research preview'],['relics','◇','RELICS','Research preview'],
- ['construct','⚒','CONSTRUCT','Research preview'],['fishing','≈','FISHING','Research preview'],
- ['archaeology','⌁','ARCHAEOLOGY','Research preview'],['store','▤','STORE','Research preview'],
+ ['prestige','✦','PRESTIGE','Permanent progression'],['drones','◇','DRONES','Drone upgrades and settings'],
+ ['chests','▣','CHESTS','Future system'],['relics','◈','RELICS','Future system'],
+ ['store','▤','STORE','Gems and packs'],['workshop','⚒','WORKSHOP','Permanent improvements'],
+ ['skills','✥','SKILL TREE','Unlockable skills'],['challenges','★','CHALLENGES','Unlock challenges'],
+ ['cards','▦','CARDS','Future system'],['pets','♧','PETS','Future system'],
+ ['construct','⚒','CONSTRUCT','Future system'],['stars','✧','STARGAZING','Future system'],
+ ['archaeology','⌁','ARCHAEOLOGY','Future system'],['fishing','≈','FISHING','Future system'],
+ ['future','▧','LOCKED','Future system']
 ];
-const OTHER_MENU=[['stats','☷','STATS','Progress'],['settings','⚙','OPTIONS','Save, sound, display'],['bag','⬡','ORE BAG','Resource inventory'],['floors','▤','FLOOR MAP','Travel']];
-const previewOnly=new Set(['contracts','cards','pets','stars','chests','relics','construct','fishing','archaeology','store']);
+const OTHER_MENU=[['stats','☷','STATS','Progress'],['cloud','⇧','CLOUD','Not available'],['settings','⚙','OPTIONS','Save, sound, display'],['logs','▤','LOGS','Activity history']];
+const previewOnly=new Set(['contracts','cloud','cards','pets','stars','chests','relics','construct','fishing','archaeology','future']);
 const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
 const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general'};
 let hideMaxUpgrades=false,pinEdit=false,pinEditIndex=0,sellFraction=1;
+let quickDrawer=null, inventorySection='materials';
+// The event shortcut is conditional; there is no active event in the current build.
+const eventActive=false;
+function closeQuickDrawer(){quickDrawer=null;$('quickDrawer').classList.add('hidden');$('quickDrawer').setAttribute('aria-hidden','true');}
+function openQuickDrawer(kind){if(quickDrawer===kind){closeQuickDrawer();return;}if(currentMenu)closeMenu();quickDrawer=kind;hand.held=false;holdPoint=null;$('quickDrawer').classList.remove('hidden');$('quickDrawer').setAttribute('aria-hidden','false');renderQuickDrawer();}
+function renderQuickDrawer(){if(!quickDrawer)return;$('drawerTitle').textContent=quickDrawer==='inventory'?'ITEMS / CONSUMABLES':'BOMBS / DRONES';let html='';
+ if(quickDrawer==='inventory'){
+  html=`<div class="drawer-tabs"><button data-draw-tab="materials" class="${inventorySection==='materials'?'chosen':''}">MATERIALS</button><button data-draw-tab="consumables" class="${inventorySection==='consumables'?'chosen':''}">CONSUMABLES</button></div>`;
+  if(inventorySection==='materials'){
+   const stacks=ORES.flatMap(o=>[{id:o.id,name:o.name+' ORE',qty:game.ore[o.id]||0,color:o.color,icon:'◆'},{id:o.id,name:o.name+' BAR',qty:game.bars[o.id]||0,color:o.edge,icon:'▰'}]).filter(i=>i.qty>0);
+   html+=`<div class="item-grid">${stacks.length?stacks.map(i=>`<div class="item-slot" title="${esc(i.name)}"><span style="color:${i.color}">${i.icon}</span><small>${fmt(i.qty)}</small></div>`).join(''):'<div class="drawer-empty">No materials collected yet. Mine rocks to collect ore.</div>'}</div>`;
+   html+='<div class="drawer-foot"><span>Mined resources are shown here.</span><button data-draw-action="bag">ORE BAG</button></div>';
+  }else html+='<div class="drawer-empty tall">No usable consumables are currently implemented.</div><div class="drawer-foot"><span>Selected item: none</span><button disabled>USE</button></div>';
+ }else{
+  html+=`<div class="drawer-header-stats"><span>DRONE: ${game.drone?'ACTIVE':'LOCKED'}</span><button data-draw-action="drones">DRONE MENU</button></div><div class="item-grid bombs-grid"><div class="item-slot selected" title="Basic bomb"><span>✹</span><small>${game.bombs}/${game.bombMax}</small></div></div><div class="drawer-foot"><span>Basic bomb · Area damage</span><button data-draw-action="fire" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div>`;
+ }$('drawerContent').innerHTML=html;
+}
+
 if(!game.sellLocks || typeof game.sellLocks!=='object')game.sellLocks={};
 function updatePinnedMenus(){
  for(let i=0;i<3;i++){
@@ -157,10 +178,14 @@ const hubSection=(label,arr)=>`<section class="hub-section"><div class="hub-head
  <span class="hub-label">${name}</span>${sub}</div>`;
  }).join('')}</div></section>`;
 function isUnlocked(k){return !(k in menuLevels)||game.obeliskLevel>=menuLevels[k];}
-function openMenu(menu){if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
+function openMenu(menu){if(quickDrawer)closeQuickDrawer();if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
 function closeMenu(){currentMenu=null;$('overlay').classList.remove('hub-mode');$('game').classList.remove('hub-visible');$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
 function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',title=k.toUpperCase();if(k==='hub'){
  title='MENU HUB';html=hubSection('PERMANENT',PERM_MENU)+hubSection('THIS PRESTIGE',TEMP_MENU)+hubSection('MISCELLANEOUS',OTHER_MENU)+`<div class="hub-bottom-tools"><button class="setup-pins ${pinEdit?'active':''}" data-act="edit-pins">${pinEdit?'DONE PINS':'SETUP PINS'}</button><div class="pin-mini-row" aria-label="Choose quick pin to edit">${game.menuPins.map((id,idx)=>{const found=[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===id);return `<button type="button" class="pin-mini ${pinEdit&&pinEditIndex===idx?'selected':''}" data-pinpick="${idx}" aria-label="Edit pin ${idx+1}, currently ${found?.[2]||id}" title="Pin ${idx+1}: ${found?.[2]||id}"><span>${found?.[1]||'▦'}</span></button>`;}).join('')}</div></div>`;
+ }else if(k==='store'){
+ title='GEM & PACK STORE';html=`<div class="section-label">CURRENCY</div><div class="summary">${cell('GEMS',game.gems)}${cell('GOLD',game.gold)}${cell('PRESTIGE',game.prestigePoints||0)}</div><div class="section-label">GEMS & PACKS</div><div class="notice">Purchases are not connected in this browser build. No money can be spent here.</div><div class="resource-line"><div class="resource-glyph">◆</div><div class="resource-body"><strong>GEM PACKS</strong><small>Coming later</small></div><div class="resource-actions"><button class="micro-btn" disabled>UNAVAILABLE</button></div></div>`;
+ }else if(k==='logs'){
+ title='ACTIVITY LOG';html=`<div class="section-label">RECENT ACTIVITY</div>${(game.log||[]).slice(0,35).map(l=>`<div class="line"><span>${esc(l.text)}</span><small>${new Date(l.t).toLocaleTimeString()}</small></div>`).join('')||'<div class="notice">No events recorded yet.</div>'}`;
 }else if(k==='bag'){
  title='ORE BAG';
  const totalOre=Object.values(game.ore).reduce((a,b)=>a+b,0),totalBars=Object.values(game.bars).reduce((a,b)=>a+b,0);
@@ -199,7 +224,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  const cost=k==='craft'?`◆ ${o.craft} ORE / BAR`:`◉ ${fmt(have*o.price)} TOTAL VALUE`;
  return `<div class="resource-line"><div class="resource-glyph" style="color:${o.color}">◆</div><div class="resource-body"><strong>${o.name} ${k==='craft'?'Bar':'Ore'}</strong><span>${desc}</span><small>${cost}</small></div><div class="resource-actions">${k==='sell'?`<button title="${locked?'Unlock':'Lock'} ${o.name}" aria-label="${locked?'Unlock':'Lock'} ${o.name}" class="micro-btn lock-icon ${locked?'chosen':''}" data-act="lock:${o.id}">${locked?'🔒':'🔓'}</button>`:''}<button class="micro-btn buy ${!can?'muted':''}" data-act="${k}:${o.id}" ${!can?'disabled':''}>${k==='craft'?'CRAFT':'SELL'}</button></div></div>`;
  }).join('');
-}else if(k==='bombs'){
+ }else if(k==='bombs'){
  title='BOMBS';html=`<div class="section-label">BOMB CHARGES</div><div class="summary">${cell('AVAILABLE',game.bombs+' / '+game.bombMax)}${cell('BLAST DMG',bombDamage(game))}${cell('RECHARGE','9s / CHARGE')}</div>`+
  `<div class="resource-line"><div class="resource-glyph">✹</div><div class="resource-body"><strong>BASIC BOMB</strong><span>Hits the full visible mining field</span><small>${game.bombs} charges available · no damage to the boss</small></div><div class="resource-actions"><button class="micro-btn buy" data-act="bomb" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div></div>`+
  `<div class="tiny-help">The bomb button is also on the right side of the mining field. Recharge continues automatically while you mine.</div>`;
@@ -289,7 +314,11 @@ $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest(
  if(changed){save();renderMenu();updateHud();}
 });
 $('panelContent').addEventListener('change',async e=>{if(e.target.id!=='importFile'||!e.target.files?.length)return;try{const candidate=JSON.parse(await e.target.files[0].text());if(!isValidSave(candidate))return notice('INVALID OR INCOMPATIBLE SAVE');confirmAction('IMPORT BACKUP','Replace your current progress with this save?',()=>{game=candidate;if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];if(!game.sellLocks||typeof game.sellLocks!=='object')game.sellLocks={};updatePinnedMenus();game.lastSaved=Date.now();save();spawnRocks();openMenu('hub');notice('SAVE IMPORTED');});}catch{notice('CANNOT READ SAVE FILE');}});
-updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('oreBagBtn').onclick=()=>openMenu('bag');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};$('bombBtn').onclick=()=>detonate();$('bombInfoBtn').onclick=()=>openMenu('bombs');document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
+$('inventoryQuick').onclick=()=>openQuickDrawer('inventory');$('bombDrawerBtn').onclick=()=>openQuickDrawer('bombs');$('drawerClose').onclick=closeQuickDrawer;
+ $('drawerContent').addEventListener('click',e=>{const tab=e.target.closest('[data-draw-tab]');if(tab){inventorySection=tab.dataset.drawTab;renderQuickDrawer();return;}const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='bag')openMenu('bag');else if(action==='drones')openMenu('drones');else if(action==='fire'){detonate();renderQuickDrawer();}});
+ $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
+ $('shopDock').onclick=()=>openMenu('store');$('droneQuick').onclick=()=>openMenu('drones');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
+ updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
 // Expose a small read-only debugging surface for automated smoke tests. Not part of game UI.
