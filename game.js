@@ -34,7 +34,8 @@ function drawHand(){
  const x=Math.round(hand.x),y=Math.round(hand.y),r=handReach(game),active=hand.held||performance.now()<hand.swingUntil;
  ctx.save();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=active?'#edcb4c14':'#d8bd6b09';ctx.fill();
  ctx.strokeStyle=active?'#ffdf83a6':'#e3d2a340';ctx.lineWidth=active?2:1;ctx.setLineDash([4,5]);ctx.stroke();ctx.setLineDash([]);
- const pulse=performance.now()<hand.swingUntil?2:0;
+ // The hand is intentionally translucent; its circular reach is drawn separately.
+ ctx.globalAlpha=.72;
  ctx.translate(Math.round(x+15),Math.round(y-21));ctx.scale(1.2,1.2);
  const pix=(px,py,w,h,col)=>{ctx.fillStyle=col;ctx.fillRect(px,py,w,h);};
  // Small gold mitten, distinct from any reference artwork.
@@ -42,7 +43,6 @@ function drawHand(){
  pix(-12,-6,6,17,'#b67337');pix(-5,-10,6,15,'#ecc56e');pix(3,-13,5,17,'#f9dc80');pix(11,-9,4,13,'#dbac4b');
  pix(-8,4,21,11,'#efc36c');pix(-7,6,7,6,'#fff0a0');pix(5,7,7,6,'#d98c36');
  pix(-6,15,17,7,'#804b3a');pix(-6,16,15,3,'#ffdd74');
- if(pulse){ctx.strokeStyle='#fff4a6';ctx.lineWidth=2;ctx.strokeRect(-16,-18,35,42)}
  ctx.restore();
 }
 function spawnSingleRock(){let x=50+Math.random()*249,y=105+Math.random()*360,tries=0;while(tries++<45&&rocks.some(r=>Math.hypot(r.x-x,r.y-y)<40)){x=50+Math.random()*249;y=105+Math.random()*360;}let ore=oreAtFloor(game.floor),hp=rockHealth(game.floor)*(.7+Math.random()*.65);rocks.push({id:rockId++,x,y,ore:ore.id,hp,max:hp,variant:Math.floor(Math.random()*4),size:14+Math.random()*3});}
@@ -138,22 +138,32 @@ const previewOnly=new Set(['contracts','cloud','cards','pets','stars','chests','
 const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
 const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general'};
 let hideMaxUpgrades=false,pinEdit=false,pinEditIndex=0,sellFraction=1;
-let quickDrawer=null, inventorySection='materials';
+let quickDrawer=null;
 // The event shortcut is conditional; there is no active event in the current build.
 const eventActive=false;
 function closeQuickDrawer(){quickDrawer=null;$('quickDrawer').classList.add('hidden');$('quickDrawer').setAttribute('aria-hidden','true');}
-function openQuickDrawer(kind){if(quickDrawer===kind){closeQuickDrawer();return;}if(currentMenu)closeMenu();quickDrawer=kind;hand.held=false;holdPoint=null;$('quickDrawer').classList.remove('hidden');$('quickDrawer').setAttribute('aria-hidden','false');renderQuickDrawer();}
-function renderQuickDrawer(){if(!quickDrawer)return;$('drawerTitle').textContent=quickDrawer==='inventory'?'ITEMS / CONSUMABLES':'BOMBS / DRONES';let html='';
- if(quickDrawer==='inventory'){
-  html=`<div class="drawer-tabs"><button data-draw-tab="materials" class="${inventorySection==='materials'?'chosen':''}">MATERIALS</button><button data-draw-tab="consumables" class="${inventorySection==='consumables'?'chosen':''}">CONSUMABLES</button></div>`;
-  if(inventorySection==='materials'){
-   const stacks=ORES.flatMap(o=>[{id:o.id,name:o.name+' ORE',qty:game.ore[o.id]||0,color:o.color,icon:'◆'},{id:o.id,name:o.name+' BAR',qty:game.bars[o.id]||0,color:o.edge,icon:'▰'}]).filter(i=>i.qty>0);
-   html+=`<div class="item-grid">${stacks.length?stacks.map(i=>`<div class="item-slot" title="${esc(i.name)}"><span style="color:${i.color}">${i.icon}</span><small>${fmt(i.qty)}</small></div>`).join(''):'<div class="drawer-empty">No materials collected yet. Mine rocks to collect ore.</div>'}</div>`;
-   html+='<div class="drawer-foot"><span>Mined resources are shown here.</span><button data-draw-action="bag">ORE BAG</button></div>';
-  }else html+='<div class="drawer-empty tall">No usable consumables are currently implemented.</div><div class="drawer-foot"><span>Selected item: none</span><button disabled>USE</button></div>';
+function openQuickDrawer(kind){
+ if(kind!=='consumables'&&kind!=='bombs')return;
+ if(quickDrawer===kind){closeQuickDrawer();return;}
+ if(currentMenu)closeMenu();quickDrawer=kind;hand.held=false;holdPoint=null;
+ $('quickDrawer').classList.remove('hidden');$('quickDrawer').setAttribute('aria-hidden','false');renderQuickDrawer();
+}
+function renderQuickDrawer(){
+ if(!quickDrawer)return;
+ const consumables=quickDrawer==='consumables';
+ $('drawerTitle').textContent=consumables?'CONSUMABLES':'BOMBS';
+ $('quickDrawer').dataset.kind=quickDrawer;
+ let html='';
+ if(consumables){
+  // Presentation only: do not invent usable items, amounts, timers, or effects.
+  html=`<div class="drawer-section-label">CONSUMABLE ITEMS</div><div class="item-grid item-only-grid" aria-label="Empty consumable slots">${Array.from({length:14},()=>'<div class="item-slot empty-slot" aria-hidden="true"></div>').join('')}</div>`+
+   `<div class="drawer-foot"><span>No consumables are available yet.</span><button type="button" disabled>USE</button></div>`;
  }else{
-  html+=`<div class="drawer-header-stats"><span>DRONE: ${game.drone?'ACTIVE':'LOCKED'}</span><button data-draw-action="drones">DRONE MENU</button></div><div class="item-grid bombs-grid"><div class="item-slot selected" title="Basic bomb"><span>✹</span><small>${game.bombs}/${game.bombMax}</small></div></div><div class="drawer-foot"><span>Basic bomb · Area damage</span><button data-draw-action="fire" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div>`;
- }$('drawerContent').innerHTML=html;
+  // Bomb charges and actual fire behavior stay exclusively in the Bombs drawer.
+  html=`<div class="drawer-section-label">BOMB INVENTORY</div><div class="item-grid bombs-grid" aria-label="Bombs inventory"><div class="item-slot selected" title="Basic bomb"><span>✹</span><small>${game.bombs}/${game.bombMax}</small></div>${Array.from({length:6},()=>'<div class="item-slot empty-slot" aria-hidden="true"></div>').join('')}</div>`+
+    `<div class="drawer-foot"><span>Basic bomb · ${game.bombs}/${game.bombMax} charges</span><button type="button" data-draw-action="fire" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div>`;
+ }
+ $('drawerContent').innerHTML=html;
 }
 
 if(!game.sellLocks || typeof game.sellLocks!=='object')game.sellLocks={};
@@ -314,8 +324,8 @@ $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest(
  if(changed){save();renderMenu();updateHud();}
 });
 $('panelContent').addEventListener('change',async e=>{if(e.target.id!=='importFile'||!e.target.files?.length)return;try{const candidate=JSON.parse(await e.target.files[0].text());if(!isValidSave(candidate))return notice('INVALID OR INCOMPATIBLE SAVE');confirmAction('IMPORT BACKUP','Replace your current progress with this save?',()=>{game=candidate;if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];if(!game.sellLocks||typeof game.sellLocks!=='object')game.sellLocks={};updatePinnedMenus();game.lastSaved=Date.now();save();spawnRocks();openMenu('hub');notice('SAVE IMPORTED');});}catch{notice('CANNOT READ SAVE FILE');}});
-$('inventoryQuick').onclick=()=>openQuickDrawer('inventory');$('bombDrawerBtn').onclick=()=>openQuickDrawer('bombs');$('drawerClose').onclick=closeQuickDrawer;
- $('drawerContent').addEventListener('click',e=>{const tab=e.target.closest('[data-draw-tab]');if(tab){inventorySection=tab.dataset.drawTab;renderQuickDrawer();return;}const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='bag')openMenu('bag');else if(action==='drones')openMenu('drones');else if(action==='fire'){detonate();renderQuickDrawer();}});
+$('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn').onclick=()=>openQuickDrawer('bombs');$('drawerClose').onclick=closeQuickDrawer;
+ $('drawerContent').addEventListener('click',e=>{const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='fire'){detonate();renderQuickDrawer();}});
  $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
  $('shopDock').onclick=()=>openMenu('store');$('droneQuick').onclick=()=>openMenu('drones');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
  updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
