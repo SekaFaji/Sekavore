@@ -1,0 +1,25 @@
+/* v0.12 — bomb panel geometry only. The existing basic bomb is the sole working type. */
+.quick-drawer[data-kind="bombs"]{min-height:206px;max-height:240px;padding:5px;background:rgba(108,84,90,.95);border:2px solid #38242d;box-shadow:inset 1px 1px #ad9097,2px 2px #161217}
+.quick-drawer[data-kind="bombs"] .drawer-head{font-size:9px;padding:2px 5px;margin-bottom:3px;min-height:20px}
+.quick-drawer[data-kind="bombs"] #drawerContent{display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.bomb-panel-upper{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:8px;line-height:1.3;color:#eee1d6;padding:3px 5px;background:#3c323a;border:1px solid #907a83}
+.bomb-panel-upper span:last-child{color:#e9c785}
+.bomb-inventory{display:flex;flex:1;min-height:82px;flex-direction:column;gap:4px;align-items:flex-start;background:#5e4e58;border:1px solid #8c7981;padding:4px;overflow:hidden}
+.bomb-row{display:flex;gap:4px;width:100%;align-items:center}
+.bomb-inventory-slot{position:relative;flex:none;width:33px;height:36px;display:grid;place-items:center;color:#f7e5b6;background:#27212a;border:1px solid #7d6672;box-shadow:inset 1px 1px #65505f,1px 1px #1d1720;border-radius:1px;padding:0}
+.bomb-inventory-slot.unavailable{opacity:.55;filter:grayscale(1)}
+.bomb-inventory-slot.available{background:linear-gradient(#59464c,#382733);border-color:#f4c26d;box-shadow:inset 1px 1px #fbe0a4,0 0 0 1px #4e3936}
+.bomb-inventory-slot.available:focus-visible{outline:2px solid #bceef5;outline-offset:2px}
+.bomb-symbol{font-size:19px;line-height:19px;color:#f5ce8c}
+.bomb-count{position:absolute;bottom:0;right:1px;font-size:7px;color:white;text-shadow:1px 1px #160f17}
+.bomb-selection{display:flex;align-items:center;gap:5px;min-height:29px;background:#4e404b;border:1px solid #7e6a75;padding:2px 4px}
+.bomb-selected-icon{display:grid;place-items:center;width:24px;height:24px;border:1px solid #d5aa76;background:#382731;color:#f3cf8e;font-size:17px}
+.bomb-selected-label{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.bomb-selected-label strong{font-size:9px;color:#ffe3bb}.bomb-selected-label small{font-size:7px;color:#d9c5bf}
+.bomb-recharge{display:flex;flex-direction:column;align-items:flex-end;gap:2px}.bomb-recharge span{font-size:8px;color:#9fefad}.bomb-recharge small{font-size:7px;color:#ead7b7}
+.bomb-panel-footer{display:flex;align-items:stretch;gap:5px;min-height:43px}
+.bomb-footer-status{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;padding:4px 5px;gap:3px;background:#151821;border:1px solid #6e6472}
+.bomb-footer-status span{color:#e4cfaa;font-size:8px}.bomb-footer-status small{font-size:7px;line-height:1.2;color:#aaafb7}
+.bomb-fire-all{flex:none;min-width:47px;min-height:43px;background:linear-gradient(#b8434e,#85202a);color:#ffebd6;border:2px solid #210d13;box-shadow:inset 1px 1px #e37d80;font-size:10px;line-height:1.12;letter-spacing:.5px}
+.bomb-fire-all:disabled{opacity:.45;filter:grayscale(1)}
+@media(max-width:365px){.quick-drawer[data-kind="bombs"]{min-height:200px}.bomb-inventory-slot{width:29px;height:33px}.bomb-row{gap:3px}.bomb-panel-upper{font-size:7px}.bomb-fire-all{min-width:44px}}
