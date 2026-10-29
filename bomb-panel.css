@@ -23,3 +23,17 @@
 .bomb-fire-all{flex:none;min-width:47px;min-height:43px;background:linear-gradient(#b8434e,#85202a);color:#ffebd6;border:2px solid #210d13;box-shadow:inset 1px 1px #e37d80;font-size:10px;line-height:1.12;letter-spacing:.5px}
 .bomb-fire-all:disabled{opacity:.45;filter:grayscale(1)}
 @media(max-width:365px){.quick-drawer[data-kind="bombs"]{min-height:200px}.bomb-inventory-slot{width:29px;height:33px}.bomb-row{gap:3px}.bomb-panel-upper{font-size:7px}.bomb-fire-all{min-width:44px}}
+
+
+/* v0.15 — one slot per unlocked bomb and a real-time recharge readout. */
+.quick-drawer[data-kind="bombs"]{min-height:0;max-height:min(41vh,295px)}
+.quick-drawer[data-kind="bombs"] #drawerContent{overflow:visible;gap:5px}
+.quick-drawer[data-kind="bombs"] .bomb-inventory{flex:none;min-height:49px;padding:5px}
+.quick-drawer[data-kind="bombs"] .bomb-row{width:auto;max-width:100%}
+.quick-drawer[data-kind="bombs"] .bomb-inventory-slot{width:36px;height:37px}
+.bomb-timing{padding:5px 6px;background:#232029;border:1px solid #90787b;display:flex;flex-direction:column;gap:4px}
+.bomb-timing-row{display:flex;justify-content:space-between;gap:8px;color:#cbbdb6;font-size:8px;line-height:1.1}
+.bomb-timing-row strong{color:#a9edb9;font-size:9px}
+.bomb-progress{height:9px;background:#0e141c;border:1px solid #725e66;box-shadow:inset 1px 1px #100e12;overflow:hidden}
+.bomb-progress span{display:block;height:100%;background:linear-gradient(90deg,#5a9d82,#a7e7ae);transition:width .2s linear}
+@media(max-width:365px){.quick-drawer[data-kind="bombs"]{min-height:0}.quick-drawer[data-kind="bombs"] .bomb-inventory-slot{height:35px;width:35px}}
