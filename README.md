@@ -19,3 +19,7 @@ Development changes are reviewed in GitHub pull requests and published to Pages 
 ## v0.11
 
 The consumables and bomb drawers are independent. Drones use their own menu. Ore and bars remain accessible from the mining economy. The hand has a translucent sprite without an attack rectangle.
+
+## v0.12
+
+The Bombs quick panel uses two compact rows of reserved slots, a clear Basic Bomb selection, charge/recharge status, and a bottom-right Fire All control. Only Basic Bomb is functional. The Drone and Consumables systems remain independent.

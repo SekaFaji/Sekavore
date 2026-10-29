@@ -159,9 +159,21 @@ function renderQuickDrawer(){
   html=`<div class="drawer-section-label">CONSUMABLE ITEMS</div><div class="item-grid item-only-grid" aria-label="Empty consumable slots">${Array.from({length:14},()=>'<div class="item-slot empty-slot" aria-hidden="true"></div>').join('')}</div>`+
    `<div class="drawer-foot"><span>No consumables are available yet.</span><button type="button" disabled>USE</button></div>`;
  }else{
-  // Bomb charges and actual fire behavior stay exclusively in the Bombs drawer.
-  html=`<div class="drawer-section-label">BOMB INVENTORY</div><div class="item-grid bombs-grid" aria-label="Bombs inventory"><div class="item-slot selected" title="Basic bomb"><span>✹</span><small>${game.bombs}/${game.bombMax}</small></div>${Array.from({length:6},()=>'<div class="item-slot empty-slot" aria-hidden="true"></div>').join('')}</div>`+
-    `<div class="drawer-foot"><span>Basic bomb · ${game.bombs}/${game.bombMax} charges</span><button type="button" data-draw-action="fire" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div>`;
+  // One functional Basic Bomb. Empty slots reserve the reference layout; no other bombs are invented.
+  const available=game.bombs>0&&!bossFight;
+  const slot=(i)=>`<button type="button" class="bomb-inventory-slot ${i===0?'available selected':'unavailable'}" ${i?'disabled aria-disabled="true"':''} ${i===0?'data-draw-action="select-basic" aria-pressed="true" aria-label="Basic Bomb, '+game.bombs+' of '+game.bombMax+' charges"':'aria-label="Empty bomb slot"'}>`+
+   (i===0?`<span class="bomb-symbol" aria-hidden="true">✹</span><span class="bomb-count">${game.bombs}/${game.bombMax}</span>`:'')+`</button>`;
+  const firstRow=Array.from({length:5},(_,i)=>slot(i)).join('');
+  const secondRow=Array.from({length:7},(_,i)=>slot(i+5)).join('');
+  html=`<div class="bomb-panel-upper"><span>BOMB INVENTORY</span><span>${game.bombs} / ${game.bombMax} CHARGES</span></div>`+
+   `<div class="bomb-inventory" aria-label="Bomb inventory"><div class="bomb-row bomb-row-five">${firstRow}</div><div class="bomb-row bomb-row-seven">${secondRow}</div></div>`+
+   `<div class="bomb-selection" aria-live="polite"><div class="bomb-selected-icon" aria-hidden="true">✹</div>`+
+   `<div class="bomb-selected-label"><strong>BASIC BOMB</strong><small>FULL FIELD DAMAGE</small></div>`+
+   `<div class="bomb-recharge"><span>${game.bombs===game.bombMax?'FULL':'RECHARGING'}</span><small>${game.bombs===game.bombMax?'READY':'9s PER CHARGE'}</small></div></div>`+
+   `<div class="bomb-panel-footer"><div class="bomb-footer-status" aria-label="Basic Bomb selection status">`+
+   `<span>1 TYPE EQUIPPED</span><small>FIRE ALL USES 1 BASIC BOMB</small></div>`+
+   `<button type="button" class="bomb-fire-all" data-draw-action="fire" ${available?'':'disabled aria-disabled="true"'}>FIRE<br>ALL</button></div>`;
+
  }
  $('drawerContent').innerHTML=html;
 }
@@ -325,7 +337,7 @@ $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest(
 });
 $('panelContent').addEventListener('change',async e=>{if(e.target.id!=='importFile'||!e.target.files?.length)return;try{const candidate=JSON.parse(await e.target.files[0].text());if(!isValidSave(candidate))return notice('INVALID OR INCOMPATIBLE SAVE');confirmAction('IMPORT BACKUP','Replace your current progress with this save?',()=>{game=candidate;if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];if(!game.sellLocks||typeof game.sellLocks!=='object')game.sellLocks={};updatePinnedMenus();game.lastSaved=Date.now();save();spawnRocks();openMenu('hub');notice('SAVE IMPORTED');});}catch{notice('CANNOT READ SAVE FILE');}});
 $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn').onclick=()=>openQuickDrawer('bombs');$('drawerClose').onclick=closeQuickDrawer;
- $('drawerContent').addEventListener('click',e=>{const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='fire'){detonate();renderQuickDrawer();}});
+ $('drawerContent').addEventListener('click',e=>{const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='select-basic'){renderQuickDrawer();}else if(action==='fire'){detonate();renderQuickDrawer();}});
  $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
  $('shopDock').onclick=()=>openMenu('store');$('droneQuick').onclick=()=>openMenu('drones');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
  updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
