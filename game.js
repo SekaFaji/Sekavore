@@ -98,7 +98,7 @@ const PERM_MENU=[
  ['construct','⚒','CONSTRUCT','Research preview'],['fishing','≈','FISHING','Research preview'],
  ['archaeology','⌁','ARCHAEOLOGY','Research preview'],['store','▤','STORE','Research preview'],
 ];
-const OTHER_MENU=[['bag','⬡','ORE BAG','Resource inventory'],['floors','▤','FLOOR MAP','Travel'],['bombs','✹','BOMBS','Fire charges'],['stats','☷','STATS','Progress'],['settings','⚙','OPTIONS','Save, sound, display']];
+const OTHER_MENU=[['stats','☷','STATS','Progress'],['settings','⚙','OPTIONS','Save, sound, display'],['bag','⬡','ORE BAG','Resource inventory'],['floors','▤','FLOOR MAP','Travel'],['bombs','✹','BOMBS','Fire charges']];
 const previewOnly=new Set(['contracts','cards','pets','stars','chests','relics','construct','fishing','archaeology','store']);
 const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
 const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general'};
@@ -114,21 +114,21 @@ function updatePinnedMenus(){
 
 const tabBar=(menu,items)=>`<div class="subtabs" role="tablist" aria-label="${menu} sections">${items.map(([id,label])=>`<button type="button" role="tab" aria-selected="${menuTabs[menu]===id}" class="subtab ${menuTabs[menu]===id?'selected':''}" data-tab="${menu}:${id}">${label}</button>`).join('')}</div>`;
 // Compact icon-first Hub tiles. The icon framing and colours are original artwork/CSS.
-// The reference XAPK confirms individual Hub icon resources, not their exact on-screen geometry.
+// The button proportions are tuned for portrait mobile screens.
 const hubSection=(label,arr)=>`<section class="hub-section"><div class="hub-heading">${label}</div><div class="hub-grid">${arr.map(([id,ico,name,description])=>{
  const locked=!isUnlocked(id),preview=previewOnly.has(id),inactive=locked||preview;
- const badge=locked?`<span class="hub-status" aria-label="Unlock at Obelisk ${menuLevels[id]}">OB ${menuLevels[id]}</span>`:preview?'<span class="hub-status" aria-label="Not implemented">SOON</span>':'';
- return `<button type="button" class="hub-tile hub-${id} ${inactive?'hub-locked':''} ${preview?'hub-preview':''}" data-menu="${id}" aria-label="${name}${locked?' locked':preview?' preview':''}" title="${description}" ${preview?'disabled aria-disabled="true"':''}>
- <span class="hub-icon-box" aria-hidden="true"><span class="hub-glyph">${ico}</span></span>
- <span class="hub-text"><b>${name}</b></span>${badge}</button>`;
+ const lockBadge=locked?`<span class="hub-padlock" aria-hidden="true"></span>`:'';
+ const sub=locked?`<span class="hub-note">${menuLevels[id]}</span>`:preview?'<span class="hub-note">SOON</span>':'';
+ return `<div class="hub-cell ${inactive?'hub-locked':''} ${preview?'hub-preview':''}">
+ <button type="button" class="hub-tile hub-${id}" data-menu="${id}" aria-label="${name}${locked?' locked':preview?' preview':''}" title="${description}" ${inactive?'aria-disabled="true"':''} ${preview?'disabled':''}>
+ <span class="hub-icon-box" aria-hidden="true"><span class="hub-glyph">${ico}</span></span>${lockBadge}</button>
+ <span class="hub-label">${name}</span>${sub}</div>`;
  }).join('')}</div></section>`;
 function isUnlocked(k){return !(k in menuLevels)||game.obeliskLevel>=menuLevels[k];}
-function openMenu(menu){if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;holdRock=null;$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
-function closeMenu(){currentMenu=null;$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
+function openMenu(menu){if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;holdRock=null;$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
+function closeMenu(){currentMenu=null;$('overlay').classList.remove('hub-mode');$('game').classList.remove('hub-visible');$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
 function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',title=k.toUpperCase();if(k==='hub'){
- title='MENU HUB';html=`<div class="hub-intro"><strong>MINER HUB</strong><span>Tap a menu icon to open it. Locked systems unlock with progress.</span></div>`+
- `<div class="pin-toolbar"><span>${pinEdit?'SELECT PIN '+(pinEditIndex+1):'QUICK MENU PINS · 1 / 2 / 3'}</span><button class="btn ${pinEdit?'good':'secondary'}" data-act="edit-pins">${pinEdit?'DONE':'EDIT PINS'}</button></div>`+
- hubSection('THIS PRESTIGE',TEMP_MENU)+hubSection('PERMANENT',PERM_MENU)+hubSection('OTHER MENUS',OTHER_MENU);
+ title='MENU HUB';html=hubSection('PERMANENT',PERM_MENU)+hubSection('THIS PRESTIGE',TEMP_MENU)+hubSection('MISCELLANEOUS',OTHER_MENU)+`<div class="hub-bottom-tools"><button class="setup-pins ${pinEdit?'active':''}" data-act="edit-pins">${pinEdit?'DONE PINS':'SETUP PINS'}</button><div class="pin-mini-row" aria-label="Choose quick pin to edit">${game.menuPins.map((id,idx)=>{const found=[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===id);return `<button type="button" class="pin-mini ${pinEdit&&pinEditIndex===idx?'selected':''}" data-pinpick="${idx}" aria-label="Edit pin ${idx+1}, currently ${found?.[2]||id}" title="Pin ${idx+1}: ${found?.[2]||id}"><span>${found?.[1]||'▦'}</span></button>`;}).join('')}</div></div>`;
 }else if(k==='bag'){
  title='ORE BAG';
  const totalOre=Object.values(game.ore).reduce((a,b)=>a+b,0),totalBars=Object.values(game.bars).reduce((a,b)=>a+b,0);
@@ -204,7 +204,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  }else if(k==='settings'){
  title='OPTIONS';html=tabBar('settings',[['general','GENERAL'],['gameplay','GAMEPLAY'],['display','DISPLAY'],['offline','OFFLINE'],['menus','MENUS'],['sound','SOUND'],['numbers','NUMBERS'],['saving','SAVING']]);
  const t=menuTabs.settings;
- if(t==='general')html+=`<div class="panel-intro">The real v2.2.50 options page reorganized settings into multiple tabs. These pages are being recreated individually.</div><div class="line"><span>Build</span><strong>Sekavore v0.6</strong></div><div class="line"><span>Current Save</span><strong>LOCAL ONLY</strong></div>`;
+ if(t==='general')html+=`<div class="panel-intro">The real v2.2.50 options page reorganized settings into multiple tabs. These pages are being recreated individually.</div><div class="line"><span>Build</span><strong>Research v0.5</strong></div><div class="line"><span>Current Save</span><strong>LOCAL ONLY</strong></div>`;
  else if(t==='sound')html+=`<div class="section-label">MUSIC AND SOUND EFFECTS</div><div class="line"><span>Sound effects and feedback</span><button class="btn" data-act="sound">${game.settings.sound?'ON':'OFF'}</button></div><div class="notice">Other independent volume controls are not implemented yet.</div>`;
  else if(t==='saving')html+=`<div class="panel-intro">Local browser save. No accounts or cloud synchronization.</div><div class="chip-row"><button class="btn good" data-act="save">SAVE NOW</button><button class="btn secondary" data-act="export">EXPORT SAVE</button></div><div class="chip-row"><button class="btn secondary" data-act="import">IMPORT SAVE</button><button class="btn danger" data-act="wipe">RESET SAVE</button></div><input hidden id="importFile" type="file" accept=".json,application/json">`;
  else if(t==='offline')html+=`<div class="section-label">OFFLINE PROGRESS</div><div class="line"><span>Maximum simulated drone time</span><strong>4 hours</strong></div><div class="line"><span>Offline rewards</span><strong>Basic drone only</strong></div><div class="notice">The real game provides additional settings for buff and fuel consumption offline. Those settings require their respective systems before becoming interactive.</div>`;
@@ -215,7 +215,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
 }
 function confirmAction(title,body,yes){$('confirmTitle').textContent=title;$('confirmBody').textContent=body;$('confirm').classList.remove('hidden');$('confirmYes').onclick=()=>{$('confirm').classList.add('hidden');yes();};}
 $('confirmCancel').onclick=()=>$('confirm').classList.add('hidden');
-$('panelContent').addEventListener('click',e=>{const btn=e.target.closest('button[data-menu],button[data-act],button[data-tab]');if(!btn)return;if(btn.dataset.menu){
+$('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest('button[data-pinpick]');if(pinChoice){pinEdit=true;pinEditIndex=Number(pinChoice.dataset.pinpick)||0;renderMenu();return;}const btn=e.target.closest('button[data-menu],button[data-act],button[data-tab]');if(!btn)return;if(btn.dataset.menu){
   const id=btn.dataset.menu;
   if(pinEdit&&currentMenu==='hub'&&id!=='hub'){
    if(!isUnlocked(id)||previewOnly.has(id))return notice('CANNOT PIN LOCKED OR UNAVAILABLE MENU');
@@ -254,7 +254,7 @@ $('panelContent').addEventListener('click',e=>{const btn=e.target.closest('butto
  if(changed){save();renderMenu();updateHud();}
 });
 $('panelContent').addEventListener('change',async e=>{if(e.target.id!=='importFile'||!e.target.files?.length)return;try{const candidate=JSON.parse(await e.target.files[0].text());if(!isValidSave(candidate))return notice('INVALID OR INCOMPATIBLE SAVE');confirmAction('IMPORT BACKUP','Replace your current progress with this save?',()=>{game=candidate;if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];if(!game.sellLocks||typeof game.sellLocks!=='object')game.sellLocks={};updatePinnedMenus();game.lastSaved=Date.now();save();spawnRocks();openMenu('hub');notice('SAVE IMPORTED');});}catch{notice('CANNOT READ SAVE FILE');}});
-updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('oreBagBtn').onclick=()=>openMenu('bag');$('closeBtn').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};$('bombBtn').onclick=()=>detonate();$('droneQuick').onclick=()=>openMenu('drones');$('bossQuick').onclick=()=>openMenu('obelisk');document.querySelectorAll('.dock button').forEach(b=>b.onclick=()=>openMenu(b.dataset.menu));window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
+updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('oreBagBtn').onclick=()=>openMenu('bag');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{game.autoFloor=!game.autoFloor;save();updateHud();notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};$('bombBtn').onclick=()=>detonate();$('droneQuick').onclick=()=>openMenu('drones');$('bossQuick').onclick=()=>openMenu('obelisk');document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
 // Expose a small read-only debugging surface for automated smoke tests. Not part of game UI.
