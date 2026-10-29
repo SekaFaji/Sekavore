@@ -27,3 +27,7 @@ The Bombs quick panel uses two compact rows of reserved slots, a clear Basic Bom
 ## v0.13
 
 The Consumables drawer uses a compact inventory layout with reserved selection and timing areas. No item use effects are enabled yet. Bomb and Drone systems remain independent.
+
+## v0.14
+
+The drone now moves toward a visible rock and damages that same rock on arrival. Its prior purchase, upgrades, save format and offline calculations are preserved.

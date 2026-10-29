@@ -8,12 +8,12 @@ let game=newGame();try{const raw=localStorage.getItem(SAVE_KEY);if(raw){const pa
 // Save compatibility: v0.2/v0.3 saves do not contain pin preferences.
 if(!Array.isArray(game.menuPins)||game.menuPins.length!==3)game.menuPins=['upgrades','craft','sell'];
 let offlineSummary=null;const elapsed=Math.max(0,(Date.now()-(game.lastSaved||Date.now()))/1000);if(elapsed>20){offlineSummary=offlineGrant(game,elapsed);}game.lastSaved=Date.now();
-let hand={x:182,y:303,held:false,lastSwing:-1e6,swingUntil:0},selectedRock=null,currentMenu=null,craftBatch=1,toastUntil=0,bossFight=null,particles=[],rockId=1,rocks=[],time=0,lastTick=performance.now(),lastAttack=0,holdRock=null,holdPoint=null,holdStart=0,droneClock=0,autoClock=0,bombClock=0,frames=0,painted=0;
+let droneMotion={x:180,y:147,targetId:null,ready:false,flashUntil:0,lastImpact:null},hand={x:182,y:303,held:false,lastSwing:-1e6,swingUntil:0},selectedRock=null,currentMenu=null,craftBatch=1,toastUntil=0,bossFight=null,particles=[],rockId=1,rocks=[],time=0,lastTick=performance.now(),lastAttack=0,holdRock=null,holdPoint=null,holdStart=0,droneClock=0,autoClock=0,bombClock=0,frames=0,painted=0;
 function save(){game.lastSaved=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){notice('Browser storage blocked — use Export Save.');}}
 function eventLog(message){game.log.unshift({t:Date.now(),text:message});game.log=game.log.slice(0,80);}
 function notice(message){const el=$('toast');el.textContent=message;el.classList.add('show');toastUntil=performance.now()+2500;}
 function playSfx(kind='hit'){if(!game.settings.sound)return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!window.audioContext)window.audioContext=new AC();const ac=window.audioContext;const osc=ac.createOscillator(),gain=ac.createGain();osc.type=kind==='bomb'?'sawtooth':kind==='success'?'triangle':'square';osc.frequency.setValueAtTime(kind==='bomb'?70:kind==='success'?740:170,ac.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='bomb'?42:kind==='success'?480:85,ac.currentTime+.12);gain.gain.setValueAtTime(.045,ac.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.14);osc.connect(gain);gain.connect(ac.destination);osc.start();osc.stop(ac.currentTime+.16);}catch{}}
-function spawnRocks(){rocks=[];selectedRock=null;const count=18;for(let i=0;i<count;i++){let x,y;let tries=0;do{x=49+Math.random()*251;y=100+Math.random()*379;tries++;}while(tries<55&&rocks.some(r=>Math.hypot(r.x-x,r.y-y)<42));const ore=oreAtFloor(game.floor);const hp=rockHealth(game.floor)*(.65+Math.random()*.75);rocks.push({id:rockId++,x,y,ore:ore.id,hp,max:hp,variant:Math.floor(Math.random()*4),size:13+Math.random()*4});}}
+function spawnRocks(){rocks=[];selectedRock=null;droneMotion.targetId=null;droneMotion.ready=false;const count=18;for(let i=0;i<count;i++){let x,y;let tries=0;do{x=49+Math.random()*251;y=100+Math.random()*379;tries++;}while(tries<55&&rocks.some(r=>Math.hypot(r.x-x,r.y-y)<42));const ore=oreAtFloor(game.floor);const hp=rockHealth(game.floor)*(.65+Math.random()*.75);rocks.push({id:rockId++,x,y,ore:ore.id,hp,max:hp,variant:Math.floor(Math.random()*4),size:13+Math.random()*4});}}
 spawnRocks();
 function restoreFloorIfNeeded(){if(!rocks.length)spawnRocks();}
 function spark(x,y,label,color='#fff3db',qty=1){if(particles.length>110)particles.splice(0,10);particles.push({x,y,label,color,ttl:0.9,dx:(Math.random()-.5)*28,dy:-26-Math.random()*18});for(let i=0;i<qty;i++)particles.push({x:x+(Math.random()-.5)*12,y:y+(Math.random()-.5)*8,label:null,color,ttl:.30+Math.random()*.25,dx:(Math.random()-.5)*38,dy:(Math.random()-.5)*47});}
@@ -48,7 +48,26 @@ function drawHand(){
 function spawnSingleRock(){let x=50+Math.random()*249,y=105+Math.random()*360,tries=0;while(tries++<45&&rocks.some(r=>Math.hypot(r.x-x,r.y-y)<40)){x=50+Math.random()*249;y=105+Math.random()*360;}let ore=oreAtFloor(game.floor),hp=rockHealth(game.floor)*(.7+Math.random()*.65);rocks.push({id:rockId++,x,y,ore:ore.id,hp,max:hp,variant:Math.floor(Math.random()*4),size:14+Math.random()*3});}
 function changeFloor(direction){const old=game.floor;if(direction>0&&!canNextFloor(game)&&game.floor>=game.highestFloor){notice('MINE '+Math.max(0,floorQuota(game.floor)-game.rocksThisFloor)+' MORE ROCKS TO DESCEND');return;}if(moveFloor(game,direction)){spawnRocks();notice('FLOOR '+game.floor);save();}else notice(direction<0?'ALREADY AT FIRST FLOOR':'FLOOR NOT CLEARED');}
 function detonate(){if(bossFight){notice('BOMBS CANNOT DAMAGE THE OBELISK');return;}if(game.bombs<=0)return notice('BOMBS RECHARGING');game.bombs--;playSfx('bomb');let doomed=[...rocks];for(const r of doomed){if(rocks.includes(r))mineRock(r,'blast',Math.max(1,bombDamage(game)/Math.max(1,pickDamage(game))));}for(let i=0;i<15;i++)spark(35+Math.random()*275,130+Math.random()*290,'','#f5a351',1);notice('BASIC BOMB — AREA DAMAGE');save();}
-function droneHit(){if(!game.drone||bossFight)return;let target=rocks[Math.floor(Math.random()*rocks.length)];mineRock(target,'drone');}
+// One visual drone and one mining target. Damage occurs only after it reaches that rock.
+function nearestDroneRock(){return rocks.reduce((best,r)=>!best||((r.x-droneMotion.x)**2+(r.y-22-droneMotion.y)**2)<((best.x-droneMotion.x)**2+(best.y-22-droneMotion.y)**2)?r:best,null);}
+function advanceDrone(dt){
+ if(!game.drone||bossFight)return;
+ let target=rocks.find(r=>r.id===droneMotion.targetId);
+ if(!target){target=nearestDroneRock();droneMotion.targetId=target?.id??null;}
+ if(!target)return;
+ const dx=target.x-droneMotion.x,dy=target.y-23-droneMotion.y,dist=Math.hypot(dx,dy);
+ const step=Math.min(dist,Math.max(0,dt)*185);
+ if(dist>0){droneMotion.x+=dx/dist*step;droneMotion.y+=dy/dist*step;}
+ if(dist<=14+step&&droneMotion.ready){
+  droneMotion.ready=false;
+  droneMotion.x=target.x;droneMotion.y=target.y-23;
+  droneMotion.lastImpact={id:target.id,x:target.x,y:target.y,at:performance.now()};
+  droneMotion.flashUntil=performance.now()+270;
+  mineRock(target,'drone');
+  if(!rocks.includes(target))droneMotion.targetId=null;
+ }
+}
+
 function bossMax(){return bossTotal(game.obeliskLevel)}
 function startBoss(){if(bossFight)return;const remaining=Math.max(0,Math.ceil((game.bossReadyAt-Date.now())/1000));if(remaining>0){notice('OBELISK READY IN '+remaining+'s');return;}bossFight={end:performance.now()+30000,damage:0};selectedRock=null;closeMenu();notice('OBELISK ENCOUNTER — 30 SEC');save();}
 function attackObelisk(raw,blast=false){if(!bossFight)return;const actual=Math.max(0,raw-bossArmor(game.obeliskLevel));if(!actual){spark(185,290,'BLOCKED','#db9ca0');return;}game.bossRemaining=Math.max(0,game.bossRemaining-actual);bossFight.damage+=actual;spark(185+Math.random()*55-27,285,fmt(actual),blast?'#ffb555':'#f8eae2',5);if(game.bossRemaining<=0){const prev=game.obeliskLevel;game.obeliskLevel++;game.levelCap+=5;game.gems+=50+10*prev;game.bossRemaining=bossTotal(game.obeliskLevel);game.bossReadyAt=Date.now()+15000;bossFight=null;eventLog('Defeated Obelisk '+(prev+1)+'; gained gems and +5 level cap');notice('OBELISK DEFEATED! +'+(50+10*prev)+' ◆');playSfx('success');save();setTimeout(()=>openMenu('obelisk'),600);}}
@@ -97,10 +116,22 @@ function updateTarget(){
  $('targetGem').style.color=ore.color;$('targetHpText').textContent='HP '+Math.max(0,Math.ceil(selectedRock.hp))+' / '+Math.ceil(selectedRock.max);
  $('targetHpFill').style.width=Math.max(0,Math.min(100,selectedRock.hp/selectedRock.max*100))+'%';
 }
-function drawDrone(){let t=time,x=180+Math.sin(t*.9)*103,y=130+Math.cos(t*1.2)*70;rect(x-12,y+12,25,4,'#111b2399');poly([[x-9,y-8],[x+5,y-11],[x+12,y-2],[x+10,y+10],[x-7,y+9],[x-12,y-1]],'#294655');rect(x-6,y-7,12,11,'#d1a958');rect(x-3,y-5,6,6,'#5cd9e5');rect(x-16,y,6,4,'#8894ac');rect(x+10,y,6,4,'#8894ac');rect(x-6,y+8,4,3,'#e1b45b');}
+function drawDrone(){
+ const x=Math.round(droneMotion.x),y=Math.round(droneMotion.y+Math.sin(time*5)*2);
+ rect(x-12,y+12,25,4,'#111b2399');
+ poly([[x-9,y-8],[x+5,y-11],[x+12,y-2],[x+10,y+10],[x-7,y+9],[x-12,y-1]],'#294655');
+ rect(x-6,y-7,12,11,'#d1a958');rect(x-3,y-5,6,6,'#5cd9e5');
+ rect(x-16,y,6,4,'#8894ac');rect(x+10,y,6,4,'#8894ac');rect(x-6,y+8,4,3,'#e1b45b');
+ const impact=droneMotion.lastImpact;
+ if(impact&&performance.now()<droneMotion.flashUntil){
+  const cx=impact.x,cy=impact.y;
+  ctx.save();ctx.strokeStyle='#71f5e2';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y+7);ctx.lineTo(cx,cy);ctx.stroke();ctx.restore();
+  rect(cx-9,cy-2,18,3,'#f8e58c');rect(cx-2,cy-10,4,19,'#7affdd');
+ }
+}
 function drawObelisk(){drawGround();rect(29,44,303,62,'#1b2029bd');rect(37,52,286,2,'#9e8d82');txt('HP  '+fmt(game.bossRemaining)+' / '+fmt(bossMax()),180,63,'#baf7b5',12,'center');txt('ARMOR  '+fmt(bossArmor(game.obeliskLevel)),180,80,'#d1dc9a',11,'center');txt('TIME  '+Math.ceil(Math.max(0,(bossFight.end-performance.now())/1000))+'s',180,97,'#f2c682',11,'center');const p=time;rect(67,476,226,18,'#221b2c');for(let i=0;i<28;i++){let a=rand(i,4);rect(40+i*10,180+a*240,1,2,a>.5?'#ae9c62':'#7e598a');}ctx.save();ctx.translate(180,305+Math.sin(p*2)*3);const glow=ctx.createRadialGradient(0,0,10,0,0,132);glow.addColorStop(0,'#95c1735e');glow.addColorStop(1,'#96e47b00');ctx.fillStyle=glow;ctx.fillRect(-130,-170,260,330);poly([[-52,75],[-62,-51],[-33,-95],[0,-127],[41,-93],[59,-46],[48,78]],'#162c32');poly([[-45,70],[-55,-43],[-27,-84],[-27,63]],'#417c68');poly([[-27,-84],[0,-116],[33,-84],[35,70],[-27,63]],'#273e3c');poly([[35,-79],[51,-39],[44,70],[35,70]],'#81ba67');for(let i=0;i<4;i++){const x=-34+i*19;poly([[x,-45],[x+8,-51],[x+8,43],[x+1,55]],i%2?'#98eb9c':'#d8d47d');rect(x+2,-60+i*7,5,5,'#f5fbab');}rect(-18,-95,35,6,'#b8f7a0');rect(-5,65,11,7,'#adf77c');ctx.restore();txt('TAP THE OBELISK TO ATTACK',180,526,'#f4e0bd',11,'center');}
 function txt(str,x,y,color='#fff',size=12,align='left'){ctx.font='bold '+size+'px monospace';ctx.textAlign=align;ctx.fillStyle='#191622';ctx.fillText(str,x+1,y+2);ctx.fillStyle=color;ctx.fillText(str,x,y);ctx.textAlign='left';}
-function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();if(!rocks.length)spawnSingleRock();drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
+function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();if(!rocks.length)spawnSingleRock();drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
 function pointerPosition(e){const box=canvas.getBoundingClientRect();return {x:(e.clientX-box.left)*360/box.width,y:(e.clientY-box.top)*602/box.height};}
 canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;const p=pointerPosition(e);
  hand.x=p.x;hand.y=p.y;hand.held=true;holdPoint=p;holdStart=performance.now();lastAttack=holdStart;
@@ -114,7 +145,7 @@ function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').tex
  $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count"><strong>${fmt(game.ore[o.id]||0)}</strong><span style="color:${o.color}">◆</span></div>`).join('');
  $('statusGroup').innerHTML=`<button type="button" data-side="stats">LV <strong>${game.level}</strong></button><button type="button" data-side="floors">FLOOR <strong>${game.floor}</strong></button><button type="button" data-side="drones">DRONE <strong>${game.drone?'ON':'OFF'}</strong></button><button type="button" data-side="bombs">BOMBS <strong>${game.bombs}/${game.bombMax}</strong></button>`;
  $('droneState').textContent=game.drone?'ACTIVE':'LOCKED';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);}
-let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneHit();}}}if(game.bombs<game.bombMax){bombClock+=.25;if(bombClock>=9){game.bombs++;bombClock=0;}}else bombClock=0;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
+let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}if(game.bombs<game.bombMax){bombClock+=.25;if(bombClock>=9){game.bombs++;bombClock=0;}}else bombClock=0;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
 function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
@@ -354,4 +385,4 @@ $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn'
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
 // Expose a small read-only debugging surface for automated smoke tests. Not part of game UI.
-window.__deepMineTest={snapshot:()=>structuredClone(game),openMenu,rockCount:()=>rocks.length,rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),swingAt:(x,y)=>swingHand(x,y)};
+window.__deepMineTest={snapshot:()=>structuredClone(game),openMenu,rockCount:()=>rocks.length,rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),drone:()=>({...droneMotion}),swingAt:(x,y)=>swingHand(x,y)};
