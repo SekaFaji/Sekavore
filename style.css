@@ -177,3 +177,83 @@
 .hub-pets,.hub-relics,.hub-chests,.hub-cards{--icon-color:#e1b7e9}
 @media(max-width:365px){.hub-grid{gap:4px}.hub-tile{min-height:60px;padding:4px 1px 3px}
  .hub-icon-box{height:25px;width:25px}.hub-glyph{font-size:17px}.hub-text b{font-size:7px}}
+
+
+/* v0.7 Hub fidelity pass: closer to the reference layout language with smaller red square buttons,
+   labels below, four-column mobile grids, thin section bars, and a lower-right pin setup block. */
+.overlay{background:rgba(6,5,9,.56)}
+.panel{background:linear-gradient(#43353d,#2f2a31);border:1px solid #6c5961;box-shadow:inset 1px 1px #9d8585,0 0 0 1px #211920,0 4px 16px rgba(0,0,0,.5)}
+.panel-head{padding:4px 6px;background:linear-gradient(#5f4b53,#4b3c45);border-bottom:1px solid #8e7275}
+#panelTitle{font-size:11px;letter-spacing:1px}
+.panel-scroll{background:rgba(17,14,19,.58)}
+.hub-note-banner{display:flex;justify-content:flex-end;align-items:center;margin:2px 1px 6px;font-size:8px;color:#d4c3bf}
+.hub-section{margin:2px 1px 10px}
+.hub-heading{padding:3px 7px;background:linear-gradient(#7f6667,#6f595f 50%,#6d575c 51%,#7e6669);border:1px solid #8d7578;color:#f5efef;font-size:9px;letter-spacing:.8px;text-shadow:none;text-align:left}
+.hub-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 10px;margin-top:8px;align-items:start;padding:0 2px}
+.hub-cell{display:flex;flex-direction:column;align-items:center;min-width:0}
+.hub-tile{--icon-color:#f2d681;width:52px;height:52px;min-height:52px;position:relative;display:grid;place-items:center;padding:0;border-radius:4px;background:linear-gradient(#c43d45,#a7242c 50%,#97222a 51%,#9f232c);border:2px solid #220c11;outline:1px solid #ef8085;outline-offset:-3px;box-shadow:inset 1px 1px #ef8e92,inset -1px -1px #7d151c,0 2px #24070d}
+.hub-tile:active:not(:disabled){transform:translateY(1px);box-shadow:inset 1px 1px #7d151c,inset -1px -1px #ef8e92,0 1px #24070d}
+.hub-icon-box{width:31px;height:31px;display:grid;place-items:center;border:2px solid #1e171d;background:linear-gradient(#3b3945,#1e232a);box-shadow:inset 1px 1px #6c6872,inset -1px -1px #0b1018}
+.hub-glyph{font-size:19px;line-height:1;color:var(--icon-color);text-shadow:1px 1px #120e16}
+.hub-label{display:block;text-align:center;margin-top:3px;color:#f5f1f1;font-size:6px;line-height:1.05;letter-spacing:.4px;text-transform:none;white-space:normal;word-break:keep-all;text-shadow:1px 1px #171219;min-height:13px}
+.hub-status{position:absolute;right:2px;bottom:2px;top:auto;min-width:11px;height:11px;padding:0 2px;border-radius:2px;background:#2f2126;border:1px solid #8b6164;color:#f2d8a4;font-size:6px;line-height:11px}
+.hub-note{font-size:6px;line-height:1;margin-top:1px;color:#ccb3aa;text-shadow:1px 1px #171219}
+.hub-cell.hub-locked,.hub-cell.hub-preview{opacity:.72}.hub-cell.hub-preview .hub-label,.hub-cell.hub-preview .hub-note{color:#bca8a5}.hub-tile:disabled{opacity:.85}
+.hub-bottom-tools{display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin:10px 3px 2px}
+.setup-pins{min-width:54px;min-height:42px;padding:5px 6px;border-radius:4px;background:linear-gradient(#c43d45,#a7242c 50%,#97222a 51%,#9f232c);border:2px solid #220c11;outline:1px solid #ef8085;outline-offset:-3px;color:#fff4f2;font-size:8px;line-height:1.1;box-shadow:inset 1px 1px #ef8e92,inset -1px -1px #7d151c,0 2px #24070d}
+.setup-pins.active{background:linear-gradient(#6aa45d,#41733a 50%,#376132 51%,#43703e);outline-color:#badca6}
+.pin-mini-row{display:flex;gap:5px}
+.pin-mini{width:34px;height:34px;border-radius:4px;background:linear-gradient(#c43d45,#a7242c 50%,#97222a 51%,#9f232c);border:2px solid #220c11;outline:1px solid #ef8085;outline-offset:-3px;color:#f6dd96;box-shadow:inset 1px 1px #ef8e92,inset -1px -1px #7d151c,0 2px #24070d}
+.pin-mini span{font-size:16px;line-height:1}.pin-mini.selected{background:linear-gradient(#6aa45d,#41733a 50%,#376132 51%,#43703e);outline-color:#badca6}
+.hub-craft,.hub-bag{--icon-color:#a7def4}.hub-upgrades,.hub-workshop,.hub-bombs{--icon-color:#eab970}.hub-sell,.hub-prestige,.hub-artifacts{--icon-color:#efce80}.hub-obelisk,.hub-challenges,.hub-stars{--icon-color:#d9d5a2}.hub-drones,.hub-skills,.hub-construct{--icon-color:#a6e2c8}.hub-fishing,.hub-archaeology,.hub-floors{--icon-color:#8dc9df}.hub-settings,.hub-stats,.hub-store{--icon-color:#b8c9df}.hub-pets,.hub-relics,.hub-chests,.hub-cards{--icon-color:#e1b7e9}
+@media (min-width:700px){.hub-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 12px}.hub-tile{width:56px;height:56px;min-height:56px}.hub-label{font-size:7px}}
+@media(max-width:365px){.hub-grid{gap:7px 7px}.hub-tile{width:48px;height:48px;min-height:48px}.hub-icon-box{width:28px;height:28px}.hub-glyph{font-size:17px}.pin-mini{width:31px;height:31px}.setup-pins{min-width:50px;min-height:38px;font-size:7px}}
+
+
+/* v0.8 / Menu Hub on-field overlay: original game artwork remains visible. */
+.overlay.hub-mode{background:rgba(10,7,12,.73);justify-content:stretch}
+.hub-mode .panel{width:100%;margin:0;background:transparent;border:0;box-shadow:none;}
+.hub-mode .panel-head{display:none}
+.hub-mode .panel-scroll{padding:14px 4px 8px;background:transparent;scrollbar-width:thin;scrollbar-color:#8a747a transparent}
+.hub-mode .hub-section{margin:0 0 11px}
+.hub-mode .hub-heading{width:50%;height:18px;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:2px 6px;background:rgba(123,92,97,.88);border:1px solid rgba(148,114,121,.9);color:#fff4ef;
+    font-size:10px;font-weight:400;letter-spacing:.65px;text-shadow:1px 1px #1f191c}
+.hub-mode .hub-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 6px;margin:12px 0 0;padding:0 7px}
+.hub-mode .hub-cell{min-width:0;align-items:center;gap:0;opacity:1}
+.hub-mode .hub-tile{width:44px;height:44px;min-height:44px;border:2px solid #190b10;border-radius:5px;
+  outline:1px solid #d97d82;outline-offset:-4px;background:linear-gradient(#b63841 0%,#a92731 40%,#92212b 41%,#a32a34 100%);
+  box-shadow:inset 1px 1px #e88c8d,inset -2px -2px #6d1721,0 2px #190d13; flex:none}
+.hub-mode .hub-icon-box{width:30px;height:30px;border:0;background:transparent;box-shadow:none;}
+.hub-mode .hub-glyph{font-size:24px;text-shadow:1px 2px #1a0f1c,-1px -1px rgba(255,255,255,.25)}
+.hub-mode .hub-label{font-size:9px;letter-spacing:.1px;line-height:1.12;min-height:0;margin-top:4px;
+    color:#f2ebec;text-shadow:1px 1px #0a060c;overflow-wrap:break-word;font-weight:400}
+.hub-mode .hub-note{font-size:7px;line-height:1;margin:1px 0 0;color:#f2e4e2}
+.hub-mode .hub-locked .hub-tile,.hub-mode .hub-preview .hub-tile{background:linear-gradient(#5e4147,#4a343b 40%,#392a32 41%,#473038);outline-color:#84636a}
+.hub-mode .hub-locked .hub-icon-box,.hub-mode .hub-preview .hub-icon-box{opacity:.35;filter:grayscale(.7)}
+.hub-mode .hub-preview .hub-label,.hub-mode .hub-preview .hub-note{opacity:.7}
+.hub-mode .hub-padlock{position:absolute;bottom:4px;right:3px;width:11px;height:9px;border:1px solid #d3b68d;
+    border-radius:2px;background:#534236;box-shadow:0 1px #1d1114;}
+.hub-mode .hub-padlock:before{content:'';position:absolute;width:6px;height:6px;border:2px solid #c8b18f;
+    border-bottom:0;border-radius:5px 5px 0 0;top:-7px;left:1px}
+.hub-mode .hub-bottom-tools{display:flex;align-items:flex-end;justify-content:flex-end;margin:10px 11px 8px;gap:8px}
+.hub-mode .setup-pins{min-width:57px;min-height:41px;font-size:9px;line-height:1.15}
+.hub-mode .pin-mini-row{gap:5px}
+.hub-mode .pin-mini{width:30px;height:30px}
+.hub-mode .pin-mini span{font-size:17px}
+#hubCloseDock{display:none}
+.hub-visible .dock{align-items:center;justify-content:space-evenly;padding:4px 6px max(4px,env(safe-area-inset-bottom));gap:4px}
+.hub-visible .dock button{flex:0 0 49px;width:49px;height:49px;max-height:49px;border-radius:6px;border:2px solid #1e1118;
+  outline:1px solid #e5888a;outline-offset:-4px;background:linear-gradient(#bb3d43,#9c2631);box-shadow:inset 1px 1px #d87b81,0 2px #211018;}
+.hub-visible .dock button span{font-size:25px;color:#f6dcbe;text-shadow:1px 1px #24151b}
+.hub-visible .dock button small{display:none}
+.hub-visible .dock #hubCloseDock{display:flex;align-items:center;justify-content:center;background:linear-gradient(#bb3d43,#8e2028)}
+.hub-visible .dock #hubCloseDock span{font-size:31px;color:#fff7ef}
+@media(max-width:365px){.hub-mode .hub-grid{gap:6px 3px;margin-top:8px;padding:0 3px}
+ .hub-mode .hub-tile{width:41px;height:41px;min-height:41px}.hub-mode .hub-icon-box{width:27px;height:27px}
+ .hub-mode .hub-glyph{font-size:21px}.hub-mode .hub-label{font-size:8px;margin-top:3px}
+ .hub-mode .hub-section{margin-bottom:8px}.hub-mode .hub-bottom-tools{margin-top:6px}
+ .hub-visible .dock button{width:45px;flex-basis:45px;height:45px}}
+/* Avoid overlaying the game's tutorial prompt on top of the Hub labels. */
+.hub-visible #hint{visibility:hidden}
+.hub-visible .fieldtop,.hub-visible .side-right,.hub-visible .side-left,.hub-visible .fieldfooter{opacity:.4}
