@@ -304,3 +304,12 @@
 .drawer-foot{flex:none;display:flex;justify-content:space-between;gap:6px;align-items:center;margin-top:5px;min-height:33px;font-size:8px}.drawer-foot button,.drawer-header-stats button{background:linear-gradient(#bb5157,#9b2635);border:2px solid #301a20;font-size:9px;min-height:29px;padding:3px 8px}.drawer-foot button:disabled{opacity:.42}.drawer-header-stats{display:flex;justify-content:space-between;align-items:center;font-size:9px;margin:2px 4px 7px}.bombs-grid{grid-template-columns:repeat(7,minmax(0,1fr))}
 .hub-visible .quick-side,.hub-visible .right-resources,.hub-visible .timed-shortcut,.hub-visible .floor-controls,.hub-visible .event-shortcut{opacity:.24;pointer-events:none}
 @media(max-width:365px){.dock{padding-left:3px;padding-right:3px}.dock-main{gap:3px}.dock .dock-main button{width:43px}.dock #shopDock{width:46px}.hub-visible .dock .dock-main button{width:40px}.quick-drawer{left:40px;right:58px}.hub-mode .hub-heading{width:59%}}
+
+/* v0.11 — independent consumables/bombs quick drawers; no materials/drone crossover. */
+.drawer-section-label{height:20px;display:flex;align-items:center;justify-content:center;background:#40323d;border:1px solid #ad8987;margin:0 0 5px;font-size:9px;color:#f5e8d6;flex:none;letter-spacing:.7px}
+.quick-drawer[data-kind="consumables"] .item-grid,.quick-drawer[data-kind="bombs"] .item-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;align-content:start;min-height:0;overflow:auto;flex:1}
+.quick-drawer .item-slot.empty-slot{background:#302832;border:1px solid #60515d;box-shadow:inset 1px 1px #423740;opacity:.8;min-height:33px}
+.quick-drawer .drawer-foot{background:#4c3f48;padding:4px 4px 2px;margin-top:4px;min-height:37px}
+.quick-drawer .drawer-foot span{color:#f2e7d9;line-height:1.25}
+.quick-drawer .drawer-foot button:disabled{filter:grayscale(1);opacity:.5}
+@media(max-width:365px){.quick-drawer .item-slot.empty-slot{min-height:29px}}
