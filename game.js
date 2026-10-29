@@ -149,7 +149,7 @@ canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;con
 canvas.addEventListener('pointermove',e=>{if(!hand.held)return;const p=pointerPosition(e);holdPoint=p;hand.x=p.x;hand.y=p.y;});
 const stopHold=()=>{hand.held=false;holdRock=null;holdPoint=null};
 canvas.addEventListener('pointerup',stopHold);canvas.addEventListener('pointercancel',stopHold);canvas.addEventListener('lostpointercapture',stopHold);
-const pixelOreIcon=ore=>`<svg viewBox="0 0 24 24" class="ore-pixel" aria-hidden="true" focusable="false"><path fill="#141822" d="M5 7 11 2 17 4 22 11 20 18 13 22 5 19 2 12z"/><path fill="\${ore.edge}" d="M5 8 11 4 16 6 20 11 18 17 12 20 6 18 4 12z"/><path fill="\${ore.color}" d="M6 9 11 5 15 7 13 12 7 14 5 12z"/><path fill="#f5efdb" opacity=".57" d="M8 8h5v3H8z"/><path fill="\${ore.color}" opacity=".78" d="m14 14 5-2-2 5-5 2z"/></svg>`;
+const pixelOreIcon=ore=>`<svg viewBox="0 0 24 24" class="ore-pixel" aria-hidden="true" focusable="false"><path fill="#141822" d="M5 7 11 2 17 4 22 11 20 18 13 22 5 19 2 12z"/><path fill="${ore.edge}" d="M5 8 11 4 16 6 20 11 18 17 12 20 6 18 4 12z"/><path fill="${ore.color}" d="M6 9 11 5 15 7 13 12 7 14 5 12z"/><path fill="#f5efdb" opacity=".57" d="M8 8h5v3H8z"/><path fill="${ore.color}" opacity=".78" d="m14 14 5-2-2 5-5 2z"/></svg>`;
 const statusPixel=type=>({
  floor:'<svg viewBox="0 0 16 16" class="status-pixel" aria-hidden="true"><path fill="#86c4d1" d="M2 11h12v3H2zM5 7h6v3H5zM7 3h2v3H7z"/><path fill="#365776" d="M3 12h10v1H3z"/></svg>',
  bombs:'<svg viewBox="0 0 16 16" class="status-pixel" aria-hidden="true"><path fill="#1a1e29" d="M3 6h10v8H3z"/><path fill="#efb257" d="M5 7h6v6H5z"/><path fill="#fff0b7" d="M8 1h2v4H8zM11 3h2v2h-2z"/></svg>',
@@ -159,8 +159,8 @@ const statusPixel=type=>({
 function statusEntries(){
  const charge=bombRechargeInfo();
  const data=[
-  {id:'floors',icon:'floor',name:'Floor progress',value:`\${game.rocksThisFloor}/\${floorQuota(game.floor)}`,sub:'',progress:Math.min(100,100*game.rocksThisFloor/floorQuota(game.floor))},
-  {id:'bombs',icon:'bombs',name:'Bomb recharge',value:`\${charge.charges}/\${charge.cap}`,sub:charge.remaining?secs(charge.remaining):'FULL',progress:charge.progress}
+  {id:'floors',icon:'floor',name:'Floor progress',value:`${game.rocksThisFloor}/${floorQuota(game.floor)}`,sub:'',progress:Math.min(100,100*game.rocksThisFloor/floorQuota(game.floor))},
+  {id:'bombs',icon:'bombs',name:'Bomb recharge',value:`${charge.charges}/${charge.cap}`,sub:charge.remaining?secs(charge.remaining):'FULL',progress:charge.progress}
  ];
  if(game.drone)data.push({id:'drones',icon:'drones',name:'Drone',value:'ACTIVE',sub:droneMotion.targetId?'FLYING':droneMotion.ready?'READY':'MINING',progress:null});
  const wait=Math.max(0,Math.ceil(((game.bossReadyAt||0)-Date.now())/1000));
@@ -168,10 +168,10 @@ function statusEntries(){
  return data;
 }
 function renderStatusRail(){
- $('statusGroup').innerHTML=statusEntries().map(x=>`<button type="button" class="hud-effect \${x.sub?'hud-effect-timed':''}" data-side="\${x.id}" title="\${x.name}" aria-label="\${x.name}: \${x.value}\${x.sub?' '+x.sub:''}"><span class="status-glyph">\${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>\${x.value}</strong>\${x.sub?`<small>\${x.sub}</small>`:''}</span>\${x.progress!==null?`<i style="--charge:\${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
+ $('statusGroup').innerHTML=statusEntries().map(x=>`<button type="button" class="hud-effect ${x.sub?'hud-effect-timed':''}" data-side="${x.id}" title="${x.name}" aria-label="${x.name}: ${x.value}${x.sub?' '+x.sub:''}"><span class="status-glyph">${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>${x.value}</strong>${x.sub?`<small>${x.sub}</small>`:''}</span>${x.progress!==null?`<i style="--charge:${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
 }
 function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
- $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="\${o.name} ore" aria-label="\${o.name} ore: \${fmt(game.ore[o.id]||0)}"><strong>\${fmt(game.ore[o.id]||0)}</strong>\${pixelOreIcon(o)}</div>`).join('');
+ $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
  renderStatusRail();
  $('droneState').textContent=game.drone?'ACTIVE':'LOCKED';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);}
 let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}advanceBombRecharge(Math.min(1,Math.max(0,(now-lastBombTick)/1000)));lastBombTick=now;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
