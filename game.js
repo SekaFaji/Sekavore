@@ -2,6 +2,7 @@ import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifa
 import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from './floor-auto-v019.js';
+import {worldForFloor,worldTabs,worldBounds,floorPairs,highestSelectableFloor,isFloorSelectable} from './floor-selector-v024.js';
 
 const $=id=>document.getElementById(id);const canvas=$('field');let ctx=canvas.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const SAVE_KEY='deep-mine-research-v2';
@@ -205,6 +206,7 @@ const OTHER_MENU=[['stats','☷','STATS','Progress'],['cloud','⇧','CLOUD','Not
 const previewOnly=new Set(['contracts','cloud','cards','pets','stars','chests','relics','construct','fishing','archaeology','future']);
 const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
 const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general',stats:'1',currencies:'ores'};
+let selectedFloorWorld=1; // navigation-only state, not part of the save
 let hideMaxUpgrades=false,pinEdit=false,pinEditIndex=0,sellFraction=1;
 let quickDrawer=null;
 // The event shortcut is conditional; there is no active event in the current build.
@@ -270,8 +272,8 @@ const hubSection=(label,arr)=>`<section class="hub-section"><div class="hub-head
  <span class="hub-label">${name}</span>${sub}</div>`;
  }).join('')}</div></section>`;
 function isUnlocked(k){return !(k in menuLevels)||game.obeliskLevel>=menuLevels[k];}
-function openMenu(menu){if(quickDrawer)closeQuickDrawer();if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
-function closeMenu(){currentMenu=null;$('overlay').classList.remove('hub-mode');$('game').classList.remove('hub-visible');$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
+function openMenu(menu){if(quickDrawer)closeQuickDrawer();if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;if(menu==='floors')selectedFloorWorld=worldForFloor(game.floor);holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('floor-select-mode',menu==='floors');$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
+function closeMenu(){currentMenu=null;$('overlay').classList.remove('floor-select-mode');$('overlay').classList.remove('hub-mode');$('game').classList.remove('hub-visible');$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
 function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',title=k.toUpperCase();if(k==='hub'){
  title='MENU HUB';html=hubSection('PERMANENT',PERM_MENU)+hubSection('THIS PRESTIGE',TEMP_MENU)+hubSection('MISCELLANEOUS',OTHER_MENU)+`<div class="hub-bottom-tools"><button class="setup-pins ${pinEdit?'active':''}" data-act="edit-pins">${pinEdit?'DONE PINS':'SETUP PINS'}</button><div class="pin-mini-row" aria-label="Choose quick pin to edit">${game.menuPins.map((id,idx)=>{const found=[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===id);return `<button type="button" class="pin-mini ${pinEdit&&pinEditIndex===idx?'selected':''}" data-pinpick="${idx}" aria-label="Edit pin ${idx+1}, currently ${found?.[2]||id}" title="Pin ${idx+1}: ${found?.[2]||id}"><span>${found?.[1]||'▦'}</span></button>`;}).join('')}</div></div>`;
  }else if(k==='store'){
@@ -298,15 +300,22 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  html+=`<div class="section-label">YOUR RESOURCES</div>`;
  html+=ORES.filter(o=>game.highestFloor>=o.min || game.ore[o.id] || game.bars[o.id]).map(o=>`<div class="ore-entry"><div class="ore-symbol" style="--ore:${o.color};--oreedge:${o.edge}"><span>◆</span></div><div class="ore-description"><strong>${o.name}</strong><small>Floors ${o.min}–${o.max} · ${o.craft} ore / bar</small></div><div class="ore-stacks"><span>${fmt(game.ore[o.id])} <small>ORE</small></span><span>${fmt(game.bars[o.id])} <small>BARS</small></span></div></div>`).join('');
  }else if(k==='floors'){
- title='FLOOR MAP';
- html=`<div class="panel-intro">Clearing a floor unlocks the next depth. Your rock counts are now saved separately for each floor, including when you revisit.</div><div class="summary">${cell('CURRENT',game.floor)}${cell('DEEPEST',game.highestFloor)}${cell('BROKEN',game.rocksBroken)}</div>`;
- const newest=game.highestFloor+(game.floor===game.highestFloor&&canNextFloor(game)?1:0);
- const last=Math.min(48,newest+1);
- for(let f=1;f<=last;f++){
-  const available=f<=newest,visited=f<=game.highestFloor,complete=getFloorProgress(game,f)>=floorQuota(f);
-  const ores=ORES.filter(o=>f>=o.min&&f<=o.max);const names=(ores.length?ores:ORES.filter(o=>o.min<=f).slice(-3)).map(o=>o.name).join(' · ');
-  html+=`<div class="floor-entry ${f===game.floor?'current':''} ${!available?'floor-locked':''}"><div class="floor-tile">${f}</div><div class="floor-detail"><strong>${f===game.floor?'◈ ':''}Floor ${f}</strong><small>${names||'Unknown ore'}</small><span>${visited?`${Math.min(floorQuota(f),getFloorProgress(game,f))} / ${floorQuota(f)} rocks · ${complete?'CLEARED':'IN PROGRESS'}`:available?'READY TO ENTER':'CLEAR CURRENT DEEPEST FLOOR'}</span></div><button class="btn ${f===game.floor?'secondary':'gold'}" data-act="floor:${f}" ${f===game.floor||!available?'disabled':''}>${f===game.floor?'HERE':!available?'LOCKED':'GO'}</button></div>`;
- }
+ title='FLOOR SELECT';
+ const deepestDone=game.floor===game.highestFloor&&canNextFloor(game);
+ const ceiling=highestSelectableFloor(game,deepestDone);
+ const pages=worldTabs(game,deepestDone);
+ if(!pages.some(p=>p.world===selectedFloorWorld&&p.unlocked))selectedFloorWorld=worldForFloor(game.floor);
+ html=`<section class="floor-selector" aria-label="Floor Select"><div class="floor-world-bar"><strong>FLOOR SELECT</strong><span class="floor-world-label">WORLD:</span><div class="floor-world-tabs" role="group" aria-label="Select world">`+
+ pages.map(p=>`<button type="button" class="floor-world ${p.world===selectedFloorWorld?'selected':''}" data-act="world:${p.world}" aria-label="World ${p.world}${p.unlocked?'':' locked'}" aria-pressed="${p.world===selectedFloorWorld}" ${p.unlocked?'':'disabled'}>${p.world}</button>`).join('')+`</div></div>`;
+ const rows=floorPairs(selectedFloorWorld);
+ const floorButton=f=>{const allowed=isFloorSelectable(game,f,deepestDone),here=f===game.floor;
+  return `<button type="button" class="floor-select-button ${here?'current':allowed?'available':'locked'}" data-act="floor:${f}" aria-label="Floor ${f}${here?' current':allowed?' available':' locked'}" ${!allowed||here?'disabled':''}>${f}</button>`;};
+ const floorOres=f=>{const available=ORES.filter(o=>f>=o.min&&f<=o.max);const pick=available.length?available:ORES.filter(o=>o.min<=f).slice(-2);
+  return `<div class="floor-select-ores" aria-label="Floor ${f} ores">${pick.slice(0,2).map(o=>pixelOreIcon(o)).join('')}</div>`;};
+ html+=`<div class="floor-zone-list">`+rows.map((row,i)=>`<div class="floor-zone-row ${row.zone==='MAGMA'?'magma':''}">${i===0||i===4?`<div class="floor-zone-mark"><b>${row.zone}</b><span>${row.zone==='STONE'?'◈':'◆'}</span></div>`:'<div class="floor-zone-mark ghost"></div>'}
+ <div class="floor-compact-row">${floorButton(row.left)}${floorOres(row.left)}${floorOres(row.right)}${floorButton(row.right)}</div></div>`).join('')+`</div>`;
+ const currentCount=getFloorProgress(game,game.floor),need=floorQuota(game.floor);
+ html+=`<div class="floor-select-meta"><span>FLOOR ${game.floor} · ${currentCount} / ${need} ROCKS</span><span>${ceiling>game.highestFloor?'NEXT FLOOR READY':'CLEAR THE DEEPEST FLOOR TO UNLOCK MORE'}</span></div><div class="floor-select-bottom"><button type="button" class="floor-select-close" data-act="close-floor" aria-label="Close Floor Select">✕</button></div></section>`;
  }else if(k==='upgrades'){
  title='UPGRADES';
  const upgradeRow=u=>{
@@ -430,6 +439,8 @@ $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest(
  }if(btn.dataset.tab){const [section,tab]=btn.dataset.tab.split(':');menuTabs[section]=tab;renderMenu();$('panelContent').scrollTop=0;return;}const act=btn.dataset.act;let changed=false;
  if(act==='edit-pins'){pinEdit=!pinEdit;pinEditIndex=0;renderMenu();return;}
  if(act==='toggle-max'){hideMaxUpgrades=!hideMaxUpgrades;renderMenu();return;}
+ if(act==='close-floor'){closeMenu();return;}
+ if(act.startsWith('world:')){const world=Number(act.split(':')[1]);const done=game.floor===game.highestFloor&&canNextFloor(game);if(worldTabs(game,done).some(p=>p.world===world&&p.unlocked)){selectedFloorWorld=world;renderMenu();}return;}
  if(act.startsWith('floor:')){
   const to=Number(act.split(':')[1]);if(travelToFloor(game,to)){
    spawnRocks();save();updateHud();closeMenu();notice('TRAVELLED TO FLOOR '+game.floor);
