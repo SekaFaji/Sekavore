@@ -49,9 +49,10 @@ export function grantXp(s,amount){s.xp+=Math.max(0,Math.floor(amount*xpMultiplie
 export function getFloorProgress(s, floor=s.floor){
  if(!s.floorProgress || typeof s.floorProgress!=='object')s.floorProgress={[s.floor]:Math.max(0,s.rocksThisFloor||0)};
  if(!Number.isFinite(s.floorProgress[floor]))s.floorProgress[floor]=0;
+ s.floorProgress[floor]=Math.max(0,Math.min(floorQuota(floor),Math.floor(s.floorProgress[floor])));
  return s.floorProgress[floor];
 }
-export function awardRock(s,ore,amount=1){s.ore[ore.id]=(s.ore[ore.id]||0)+amount;s.rocksBroken++;s.rocksThisFloor=getFloorProgress(s)+1;s.floorProgress[s.floor]=s.rocksThisFloor;s.totalMined+=amount;grantXp(s,3+s.floor*2);}
+export function awardRock(s,ore,amount=1){s.ore[ore.id]=(s.ore[ore.id]||0)+amount;s.rocksBroken++;s.rocksThisFloor=Math.min(floorQuota(s.floor),getFloorProgress(s)+1);s.floorProgress[s.floor]=s.rocksThisFloor;s.totalMined+=amount;grantXp(s,3+s.floor*2);}
 export function canNextFloor(s){return getFloorProgress(s)>=floorQuota(s.floor);}
 export function travelToFloor(s,destination){
  const next=Math.floor(destination);
