@@ -1,17 +1,25 @@
 # Sekavore
 
-A browser-playable incremental mining game.
+A browser-based incremental mining game, playable on desktop and mobile.
 
-Play: https://sekafaji.github.io/Sekavore/
+## Run locally
 
-Run `npm test` to verify gameplay, and `python tests/hud_v016.py` for Chromium UI checks (requires Playwright and Chromium).
+```bash
+python3 -m http.server 8080
+```
 
-Current version: v0.17. The game stores progress in the local browser.
+Open `http://localhost:8080/`.
 
-### v0.17 HUD update
-- Pixel ore counters and a collapsible live status list; boss/drone details appear only when relevant.
-- No fabricated status durations or gameplay balance changes.
+## Tests
 
-## v0.18 — Mining field visuals
+```bash
+npm test
+```
 
-The mining field uses an independent procedural rendering module (`mining-art-v018.js`). Rock damage, drops, progression, the hand radius and save format are unchanged.
+## Publish
+
+Merging to `main` runs the GitHub Pages workflow. Saves are stored in each browser; use Export/Import to transfer progress manually.
+
+## v0.19
+
+Improved mining hit effects and added an unlockable Auto-Floor toggle. See the patch notes for migration details.
