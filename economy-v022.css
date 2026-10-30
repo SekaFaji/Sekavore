@@ -1,0 +1,36 @@
+/* Compact economy-menu layout. Only affects Upgrades, Craft and Sell. */
+.econ-screen{display:flex;flex-direction:column;gap:0;font-size:9px;color:#eee0d6}
+.econ-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;margin:0 0 6px}
+.econ-summary>div{min-width:0;padding:3px 2px;text-align:center;background:#141922;border:1px solid #75616a}
+.econ-summary strong{display:block;font-size:11px;color:#f3d49d;overflow:hidden;text-overflow:ellipsis}
+.econ-summary small{display:block;font-size:7px;color:#c5b8b2}
+.econ-toolbar{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:4px 5px;margin:0 1px 5px;border:1px solid #6c5a66;background:#312a32;font-size:8px;color:#f5d5b0}
+.econ-toolbar .quantity-strip{display:flex;gap:3px}
+.econ-toolbar .micro-btn{min-height:21px;min-width:27px;padding:3px 5px}
+.econ-heading{margin:5px 1px 9px;padding:4px 7px;text-align:left;background:#705661;border-top:1px solid #b38b8c;border-bottom:1px solid #372931;color:#fff0e4;letter-spacing:.65px;font-size:9px}
+.econ-upgrade{margin:4px 1px 10px;min-height:45px;padding:4px 3px 3px;gap:5px;border:1px solid #ad8f8d;background:#77636a}
+.econ-upgrade .upgrade-icon{flex:0 0 30px;display:grid;place-items:center;width:30px;height:34px;font-size:19px}
+.econ-upgrade .upgrade-body{min-height:35px;gap:2px;padding:4px 3px;background:#111721;text-align:center}
+.econ-upgrade .upgrade-title{font-size:9px;color:#f6e9de}
+.econ-upgrade .upgrade-sub{font-size:8px;line-height:1.1;color:#d3d5e0}
+.econ-upgrade .upgrade-price{font-size:8px;color:#f1d399}
+.econ-upgrade .upgrade-right{width:47px;flex:0 0 47px}
+.econ-upgrade .upgrade-right small{font-size:8px;top:-10px;right:2px}
+.econ-upgrade .upgrade-right .btn{min-height:32px;font-size:9px}
+.econ-locked{opacity:.62}.econ-maxed{opacity:.9}.econ-empty{padding:15px 8px;text-align:center;background:#1b2028;border:1px solid #665660}
+.econ-caption{font-size:8px;line-height:1.35;padding:0 5px 6px;color:#c3b2b2}
+.econ-locktools{display:flex;gap:4px;align-items:center;margin:0 1px 4px;flex-wrap:wrap}
+.econ-locktools .micro-btn{font-size:8px;min-height:22px}
+.econ-locktools span{font-size:8px;color:#d7c4b5;margin-left:auto}
+.econ-sell-summary{display:grid;grid-template-columns:1fr auto;gap:3px;align-items:center;margin:0 1px 5px;padding:5px;background:#131923;border:1px solid #776269}
+.econ-sell-summary span{font-size:8px;color:#d8c8bd}
+.econ-sell-summary strong{font-size:9px;color:#e9cb86;text-align:right}
+.econ-sell-summary button{grid-column:1 / -1;justify-self:stretch;min-height:25px}
+.econ-resource{display:flex;align-items:center;gap:4px;min-height:48px;padding:4px;margin:0 1px 6px;background:#745d69;border:1px solid #a4888b;box-shadow:0 2px #201a20}
+.econ-ore-icon{width:29px;flex:0 0 29px;height:34px;display:grid;place-items:center;color:var(--ore-color);text-shadow:1px 1px var(--ore-edge);font-size:20px}
+.econ-resource-body{display:flex;flex:1;min-width:0;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 3px;background:#111820;border:1px solid #302e37;min-height:38px;text-align:center}
+.econ-resource-body strong{font-size:9px;color:#f5e6d8}.econ-resource-body span{font-size:8px;color:#c4c8cf}.econ-resource-body small{font-size:8px;color:#efcf96}
+.econ-resource-actions{display:flex;flex:0 0 46px;min-width:46px;flex-direction:column;gap:3px}
+.econ-resource-actions .micro-btn{min-height:23px;min-width:0;width:100%}
+.econ-resource-actions .econ-lock{min-height:18px;font-size:11px}
+@media(max-width:365px){.econ-resource-body strong{font-size:8px}.econ-resource-body small,.econ-resource-body span{font-size:7px}.econ-upgrade .upgrade-right{width:43px;flex-basis:43px}.econ-upgrade .upgrade-icon{flex-basis:25px;width:25px}}
