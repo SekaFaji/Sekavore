@@ -30,7 +30,7 @@ jobs:
       - name: Assemble only public site files
         run: |
           mkdir -p _site
-          cp index.html floor-auto-v019.js floor-auto-v019.css economy-v022.css style.css hud-v016.css hud-v017.css bomb-panel.css consumables-panel.css core.js game.js mining-art-v018.js mining-waves-v021.js main-controls-v023.css floor-selector-v024.js floor-selector-v024.css .nojekyll _site/
+          cp index.html floor-auto-v019.js floor-auto-v019.css economy-v022.css style.css hud-v016.css hud-v017.css bomb-panel.css consumables-panel.css core.js game.js mining-art-v018.js mining-waves-v021.js main-controls-v023.css floor-selector-v024.js floor-selector-v024.css bomb-controls-v025.js .nojekyll _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
