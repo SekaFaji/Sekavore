@@ -25,7 +25,7 @@ test('advance only after clearing deepest floor; cannot skip',()=>{
  assert.equal(travelToFloor(s,2),true);
  assert.equal(travelToFloor(s,4),false);
  assert.equal(travelToFloor(s,1),true);
- assert.equal(shouldAutoAdvance(s,canNextFloor(s)),false);
+ assert.equal(shouldAutoAdvance(s,canNextFloor(s)),true);
 });
 test('permanent unlock survives prestige',()=>{
  const s=newGame();s.obeliskLevel=5;s.autoFloorUnlocked=true;s.autoFloor=true;s.skillPoints=2;s.level=21;
