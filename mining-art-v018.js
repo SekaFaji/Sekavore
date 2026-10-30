@@ -33,6 +33,12 @@ function drawFloorImage(floor){
   polygon(c,[[xx+8,yy+4],[xx+w*.45,yy+1],[xx+w*.78,yy+6],[xx+w*.41,yy+7]],pal.top);
   line(c,[[xx+3,yy+h*.62],[xx+10,yy+h*.85],[xx+w*.47,yy+h*.84]],pal.dark,1.4);
   if(shade>.77){line(c,[[xx+w*.65,yy+7],[xx+w*.53,yy+h*.42],[xx+w*.74,yy+h*.63]],pal.dark,1.2)}
+  // Dithered stone grain and worn edges vary across the original floor tiles.
+  if(shade>.14){
+   const mx=xx+w*(.27+hash(gx,gy,11)*.25), my=yy+h*(.32+hash(gx,gy,12)*.26);
+   box(c,mx,my,2,1,pal.dark);
+   if(shade>.61)box(c,mx+5,my+4,2,2,pal.top);
+  }
  }
  // Thin amber seams inside selected fractures. These are drawn once per floor.
  c.save();c.globalAlpha=.38;
@@ -56,6 +62,13 @@ function drawFloorImage(floor){
   polygon(c,[[x,y],[x+3,y-4],[x+7,y-2],[x+6,y+3],[x+2,y+4]],dark?'#c89431':'#9b7541','#66553e',.9);
   box(c,x+2,y-2,2,2,dark?'#ffd665':'#caaf6c');
  }
+ // Small cached cracks and embedded chips reduce repeating slab patterns.
+ for(let i=0;i<42;i++){
+  const x=8+hash(i,18,1)*344, y=12+hash(i,25,2)*575;
+  const z=hash(i,31,3);
+  if(z>.69){line(c,[[x-5,y-2],[x+1,y+2],[x+3,y+8]],pal.dark,1);box(c,x+3,y+6,2,2,pal.top);}
+  else if(z>.31){polygon(c,[[x,y],[x+4,y-3],[x+7,y-1],[x+6,y+4],[x+1,y+5]],pal.dark);box(c,x+2,y-2,3,1,pal.top);}
+ }
  // The side edges are dark stone, but no longer dominate the mining area.
  for(let s of [0,351])for(let y=0;y<602;y+=31){
   let z=hash(s,y,1)*8;
@@ -65,7 +78,22 @@ function drawFloorImage(floor){
  box(c,0,0,360,5,'#443c3e');box(c,0,598,360,4,'#40393d');
  return canvas;
 }
-export function drawCavernGround(ctx,floor){if(cachedFloor!==floor||!cachedImage){cachedImage=drawFloorImage(floor);cachedFloor=floor}ctx.drawImage(cachedImage,0,0)}
+export function drawCavernGround(ctx,floor,now=performance.now()){
+ if(cachedFloor!==floor||!cachedImage){cachedImage=drawFloorImage(floor);cachedFloor=floor}
+ ctx.drawImage(cachedImage,0,0);
+ // Low-contrast decorative dust motes drift above the cached floor.
+ const seconds=now/1000;
+ ctx.save();
+ for(let i=0;i<13;i++){
+  const x=9+hash(i,37,1)*342+Math.sin(seconds*(.27+hash(i,20,1)*.24)+i)*3;
+  const travel=seconds*(3.1+hash(i,19,2)*3.0);
+  const y=(hash(i,23,2)*610-travel%610+610)%610;
+  const glint=(Math.sin(seconds*(.55+hash(i,21,3)) + i*1.3)+1)*.5;
+  ctx.globalAlpha=.075+glint*.13;
+  box(ctx,x,y,i%5===0?3:2,i%4===0?3:2,i%4===0?'#ffd176':'#ead9b7');
+ }
+ ctx.restore();
+}
 function stone(ctx,x,y,z,pal,seed){
  const dark=pal.dark,top=pal.top;
  polygon(ctx,[[x-z,y+z*.32],[x-z*.9,y-z*.48],[x-z*.42,y-z*.84],[x+z*.22,y-z],[x+z*.8,y-z*.54],[x+z,y+z*.24],[x+z*.48,y+z*.72],[x-z*.34,y+z*.68]],dark,'#27252a',1);
@@ -76,9 +104,11 @@ function stone(ctx,x,y,z,pal,seed){
 }
 export function drawCavernRock(ctx,r,ores){
  const fresh=impacts.findLast(e=>!e.broken&&e.x===r.x&&e.y===r.y&&(performance.now()-e.born)<140);
- const shake=fresh?Math.max(0,1-(performance.now()-fresh.born)/140):0;
- const x=Math.round(r.x+(shake?Math.sin(performance.now()*.27+r.x)*shake*1.8:0));
- const y=Math.round(r.y+(shake?Math.cos(performance.now()*.33+r.y)*shake:0));
+ const shake=fresh?Math.max(0,1-(performance.now()-fresh.born)/185):0;
+ const now=performance.now();
+ const hover=Math.sin(now*.00125+r.x*.071+r.y*.039)*.45;
+ const x=Math.round(r.x+(shake?Math.sin(now*.27+r.x)*shake*2.7:0));
+ const y=Math.round(r.y+hover+(shake?Math.cos(now*.33+r.y)*shake*1.7:0));
  const z=Math.round(r.size||15),v=(r.variant||0)%4;
  const ore=ores.find(o=>o.id===r.ore)||ores[0];
  const pal={dark:'#29272d',mid:'#49474b',top:'#817e7c',edge:'#222128',light:'#b9b0a2'};
@@ -106,9 +136,24 @@ export function drawCavernRock(ctx,r,ores){
  }
  // Each rock has an ore cue, even for basic tin.
  box(ctx,x-z*.55,y+z*.35,3,3,ore.edge);box(ctx,x-z*.47,y+z*.23,2,2,ore.color);
+ // Tiny mineral facets shimmer independently of gameplay.
+ const fleck=((Math.floor(now/680)+Math.floor(r.x))%5===0);
+ if(v===1||v===2){
+  box(ctx,x+z*.1,y-z*.7,3,2,ore.edge);
+  box(ctx,x+z*.13,y-z*.68,2,2,ore.color);
+  if(fleck){ctx.save();ctx.globalAlpha=.7;box(ctx,x+z*.26,y-z*.75,2,2,'#fff4c7');ctx.restore();}
+ }
  const damage=r.max>0?Math.max(0,1-r.hp/r.max):0;
  if(damage>.12){line(ctx,[[x+z*.05,y-z*.35],[x-1,y-2],[x+z*.29,y+z*.28]],'#211d24',Math.min(3,1+damage*2));}
  if(damage>0){box(ctx,x-z,y-z-13,2*z,4,'#161820');box(ctx,x-z+1,y-z-12,(2*z-2)*Math.max(0,1-damage),2,'#e3a16d')}
+ // Short, nonrectangular chipping gleam at a genuinely struck rock.
+ if(shake>0){
+  ctx.save();ctx.globalAlpha=Math.min(.5,shake*.48);
+  const sparkleY=y-z*.55;
+  line(ctx,[[x-z*.46,sparkleY],[x-z*.18,sparkleY-3],[x+z*.03,sparkleY-2]],ore.color,2);
+  box(ctx,x+z*.35,y-z*.33,3,2,'#ffeed4');
+  ctx.restore();
+ }
 }
 export function recordMiningImpact(x,y,oreColor='#e8cb78',broken=false){
  impacts.push({x,y,color:oreColor,born:performance.now(),broken});
@@ -116,18 +161,35 @@ export function recordMiningImpact(x,y,oreColor='#e8cb78',broken=false){
 }
 export function drawMiningImpacts(ctx,now=performance.now()){
  for(let i=impacts.length-1;i>=0;i--){
-  const e=impacts[i],t=(now-e.born)/(e.broken?420:250);
+  const e=impacts[i],t=(now-e.born)/(e.broken?500:300);
   if(t>=1){impacts.splice(i,1);continue}
-  ctx.save();ctx.globalAlpha=(1-t)*.75;const reach=7+t*(e.broken?22:12);
+  ctx.save();ctx.globalAlpha=(1-t)*.7;const reach=7+t*(e.broken?25:12);
   ctx.strokeStyle=e.broken?'#ffcf6a':e.color;ctx.lineWidth=e.broken?2:1.4;
   for(let a=0;a<6;a++){const theta=a*Math.PI/3+(e.x%6)*.12;const u=Math.cos(theta),v=Math.sin(theta);
    line(ctx,[[e.x+u*reach*.52,e.y+v*reach*.52],[e.x+u*reach,e.y+v*reach]],ctx.strokeStyle,ctx.lineWidth);
   }
   // Flecks follow real rock impacts, with no effect on hit-testing or loot.
-  for(let k=0;k<(e.broken?9:4);k++){
-   const a=k*2.39996+e.x*.031,dist=(2+t*(e.broken?26:13))*(.55+(k%3)*.18);
+  for(let k=0;k<(e.broken?12:5);k++){
+   const a=k*2.39996+e.x*.031,dist=(2+t*(e.broken?31:15))*(.55+(k%3)*.18);
    const fx=e.x+Math.cos(a)*dist,fy=e.y+Math.sin(a)*dist-t*t*7;
    box(ctx,fx,fy,k%2?2:3,k%3?2:3,k%3===0?'#eab462':e.color);
+  }
+  // Angular debris, short luminous core, and a fading break-only dust burst.
+  ctx.globalAlpha=(1-t)*.38;
+  const shardCount=e.broken?7:3;
+  for(let j=0;j<shardCount;j++){
+   const theta=j*2.39996+e.y*.034, radial=3+t*(e.broken?21:10);
+   const sx=e.x+Math.cos(theta)*radial,sy=e.y+Math.sin(theta)*radial-t*5;
+   polygon(ctx,[[sx,sy-3],[sx+2,sy],[sx,sy+4],[sx-2,sy+1]],j%2?'#f4d88e':e.color);
+  }
+  ctx.globalAlpha=(1-t)*.19;
+  box(ctx,e.x-4,e.y-4,8,7,'#ffe2a7');
+  if(e.broken){
+   ctx.globalAlpha=(1-t)*.22;
+   for(let k=0;k<5;k++){
+    const dx=(k-2)*7*(.4+t),dy=-3-t*9+(k%2)*3;
+    box(ctx,e.x+dx-3,e.y+dy,5+t*3,3+t*2,'#d9cbad');
+   }
   }
   ctx.restore();
  }
