@@ -75,7 +75,11 @@ function stone(ctx,x,y,z,pal,seed){
  if(seed>1){box(ctx,x-z*.63,y-z*.62,z*.33,2,pal.light)}
 }
 export function drawCavernRock(ctx,r,ores){
- const x=Math.round(r.x),y=Math.round(r.y),z=Math.round(r.size||15),v=(r.variant||0)%4;
+ const fresh=impacts.findLast(e=>!e.broken&&e.x===r.x&&e.y===r.y&&(performance.now()-e.born)<140);
+ const shake=fresh?Math.max(0,1-(performance.now()-fresh.born)/140):0;
+ const x=Math.round(r.x+(shake?Math.sin(performance.now()*.27+r.x)*shake*1.8:0));
+ const y=Math.round(r.y+(shake?Math.cos(performance.now()*.33+r.y)*shake:0));
+ const z=Math.round(r.size||15),v=(r.variant||0)%4;
  const ore=ores.find(o=>o.id===r.ore)||ores[0];
  const pal={dark:'#29272d',mid:'#49474b',top:'#817e7c',edge:'#222128',light:'#b9b0a2'};
  const metal={dark:'#514c49',mid:'#77716c',top:'#b2ada5',edge:'#3b3739',light:'#e0d4ba'};
@@ -118,6 +122,12 @@ export function drawMiningImpacts(ctx,now=performance.now()){
   ctx.strokeStyle=e.broken?'#ffcf6a':e.color;ctx.lineWidth=e.broken?2:1.4;
   for(let a=0;a<6;a++){const theta=a*Math.PI/3+(e.x%6)*.12;const u=Math.cos(theta),v=Math.sin(theta);
    line(ctx,[[e.x+u*reach*.52,e.y+v*reach*.52],[e.x+u*reach,e.y+v*reach]],ctx.strokeStyle,ctx.lineWidth);
+  }
+  // Flecks follow real rock impacts, with no effect on hit-testing or loot.
+  for(let k=0;k<(e.broken?9:4);k++){
+   const a=k*2.39996+e.x*.031,dist=(2+t*(e.broken?26:13))*(.55+(k%3)*.18);
+   const fx=e.x+Math.cos(a)*dist,fy=e.y+Math.sin(a)*dist-t*t*7;
+   box(ctx,fx,fy,k%2?2:3,k%3?2:3,k%3===0?'#eab462':e.color);
   }
   ctx.restore();
  }
