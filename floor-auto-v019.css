@@ -1,0 +1,4 @@
+/* Floor progression remains selectable before permanent automation is unlocked. */
+.floor-controls #autoFloor.locked {color:#bba8ab;border-color:#55434c;background:linear-gradient(#40333a,#241f27);cursor:pointer}
+.floor-controls #autoFloor.locked #autoFloorState {color:#f1b46f;font-weight:800}
+.floor-controls #autoFloor.active {border-color:#a6d28d;box-shadow:inset 0 0 0 1px #a2d186}
