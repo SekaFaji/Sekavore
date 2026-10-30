@@ -1,0 +1,19 @@
+/* Sekavore v0.23 — compact HUD shortcuts and data-backed modal layouts. */
+.topbar .hud-right{width:clamp(85px,26vw,104px);max-width:104px;margin-right:64px;flex:none}
+.hud-right .resource{gap:2px;padding:2px 2px}.hud-right .resource small{font-size:6px}.hud-right .resource span{font-size:10px}.hud-right .resource strong{font-size:9px}
+.hud-top-actions{position:absolute;right:5px;top:15px;z-index:5;display:flex;gap:3px;align-items:center}
+.hud-action{width:27px;height:30px;padding:0;border:2px solid #211822;background:linear-gradient(#bb3c49,#852533);color:#e4eef0;box-shadow:inset 1px 1px #ef8590,inset -1px -1px #5a1721,1px 2px #1a111a;font-size:19px;line-height:1;cursor:pointer}
+.hud-action:active{transform:translateY(1px)}
+.obelisk-shortcut span{font-size:23px;color:#ebca7a}.obelisk-shortcut small{font-size:8px}
+.stats-pages-label{padding:3px;text-align:center;font-size:10px;color:#f5ddc5}
+.stats-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:5px 0 9px;align-items:start}
+.stats-table{background:#6d555c;border:1px solid #9d8188;min-width:0}
+.stats-table h2{margin:0;background:#141820;color:#f0d7ca;font-size:10px;text-align:center;padding:5px 2px}
+.stat-line{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:2px;padding:4px 3px;font-size:8px;min-height:27px;border-top:1px solid #55464c;background:#6c5a60}
+.stat-line:nth-of-type(even){background:#59494f}.stat-line span{min-width:0}.stat-line strong{color:#f2e4c8;font-size:8px;font-variant-numeric:tabular-nums}
+.currency-ledger{background:#141820;border:2px solid #76646a;margin:5px 0;color:#e5e0da}
+.currency-ledger-head,.currency-ledger-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 60px;align-items:center;gap:3px;padding:4px 5px;border-bottom:1px solid #625159;min-height:28px;font-size:10px}
+.currency-ledger-head{background:#4f3f48;color:#e7c7b4;font-size:8px}.currency-ledger-row strong{text-align:right;font-size:10px;font-variant-numeric:tabular-nums;color:#eadbbf}
+.currency-ore-name{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.currency-ore-name .ore-pixel{width:19px;height:19px}.currency-footer{display:flex;justify-content:flex-end;margin-top:10px}
+@media(max-width:365px){.topbar .hud-right{width:91px;margin-right:61px}.hud-top-actions{right:4px;gap:2px}.hud-action{width:26px;height:28px}.stat-line{font-size:7px}.stat-line strong{font-size:7px}.currency-ledger-head,.currency-ledger-row{grid-template-columns:minmax(0,1fr) 58px 50px;font-size:9px}}

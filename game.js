@@ -181,8 +181,8 @@ function renderStatusRail(){
 function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&rocks.length===0?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
  $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
  renderStatusRail();
- $('droneState').textContent=game.drone?'ACTIVE':'LOCKED';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=!game.autoFloorUnlocked?'LOCK':game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);$('autoFloor').classList.toggle('locked',!game.autoFloorUnlocked);$('autoFloor').title=game.autoFloorUnlocked?'Toggle automatic floor advance':'Unlock through Skill Tree after Obelisk '+AUTO_FLOOR_OBELISK_GATE;}
-let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}advanceBombRecharge(Math.min(1,Math.max(0,(now-lastBombTick)/1000)));lastBombTick=now;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
+ $('obeliskQuickState').textContent=game.bossReadyAt>Date.now()?'WAIT':'FIGHT';$('chestFill').style.height=((game.rocksBroken%18)/18*100)+'%';$('starFill').style.height=((game.rocksBroken%65)/65*100)+'%';$('autoFloorState').textContent=!game.autoFloorUnlocked?'LOCK':game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);$('autoFloor').classList.toggle('locked',!game.autoFloorUnlocked);$('autoFloor').title=game.autoFloorUnlocked?'Toggle automatic floor advance':'Unlock through Skill Tree after Obelisk '+AUTO_FLOOR_OBELISK_GATE;}
+let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}advanceBombRecharge(Math.min(1,Math.max(0,(now-lastBombTick)/1000)));lastBombTick=now;updateHud();if(quickDrawer&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','currencies','hub'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
 function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
@@ -204,7 +204,7 @@ const PERM_MENU=[
 const OTHER_MENU=[['stats','☷','STATS','Progress'],['cloud','⇧','CLOUD','Not available'],['settings','⚙','OPTIONS','Save, sound, display'],['logs','▤','LOGS','Activity history']];
 const previewOnly=new Set(['contracts','cloud','cards','pets','stars','chests','relics','construct','fishing','archaeology','future']);
 const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
-const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general'};
+const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general',stats:'1',currencies:'ores'};
 let hideMaxUpgrades=false,pinEdit=false,pinEditIndex=0,sellFraction=1;
 let quickDrawer=null;
 // The event shortcut is conditional; there is no active event in the current build.
@@ -278,7 +278,19 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  title='GEM & PACK STORE';html=`<div class="section-label">CURRENCY</div><div class="summary">${cell('GEMS',game.gems)}${cell('GOLD',game.gold)}${cell('PRESTIGE',game.prestigePoints||0)}</div><div class="section-label">GEMS & PACKS</div><div class="notice">Purchases are not connected in this browser build. No money can be spent here.</div><div class="resource-line"><div class="resource-glyph">◆</div><div class="resource-body"><strong>GEM PACKS</strong><small>Coming later</small></div><div class="resource-actions"><button class="micro-btn" disabled>UNAVAILABLE</button></div></div>`;
  }else if(k==='logs'){
  title='ACTIVITY LOG';html=`<div class="section-label">RECENT ACTIVITY</div>${(game.log||[]).slice(0,35).map(l=>`<div class="line"><span>${esc(l.text)}</span><small>${new Date(l.t).toLocaleTimeString()}</small></div>`).join('')||'<div class="notice">No events recorded yet.</div>'}`;
-}else if(k==='bag'){
+}else if(k==='currencies'){
+ title='CURRENCIES';
+ html=tabBar('currencies',[['ores','ORE + BARS'],['bars','BARS'],['wallet','FUNDS']]);
+ if(menuTabs.currencies==='wallet'){
+  html+=`<div class="section-label">CURRENCIES</div>`+
+   `<div class="currency-ledger">${[['Gold',game.gold,'◉'],['Gems',game.gems,'◆'],['Prestige Points',game.prestigePoints||0,'✦']].map(([name,qty,icon])=>`<div class="currency-ledger-row"><span>${icon} ${name}</span><strong>${fmt(qty)}</strong></div>`).join('')}</div>`;
+ }else{
+  html+=`<div class="section-label">${menuTabs.currencies==='bars'?'CRAFTED BARS':'ORE AND BARS'}</div>`+
+  `<div class="currency-ledger" role="table" aria-label="Owned ore and crafted bars"><div class="currency-ledger-head" role="row"><span>RESOURCE</span><span>ORE</span><span>BARS</span></div>`+
+  ORES.filter(o=>o.min<=game.highestFloor||game.ore[o.id]||game.bars[o.id]).map(o=>`<div class="currency-ledger-row" role="row"><span class="currency-ore-name">${pixelOreIcon(o)}${o.name}</span><strong>${menuTabs.currencies==='bars'?'—':fmt(game.ore[o.id]||0)}</strong><strong>${fmt(game.bars[o.id]||0)}</strong></div>`).join('')+`</div>`;
+ }
+ html+=`<div class="currency-footer"><button class="micro-btn buy" data-menu="bag">OPEN ORE BAG</button></div>`;
+ }else if(k==='bag'){
  title='ORE BAG';
  const totalOre=Object.values(game.ore).reduce((a,b)=>a+b,0),totalBars=Object.values(game.bars).reduce((a,b)=>a+b,0);
  html=`<div class="panel-intro">All ores and crafted bars are stored here. Ore is earned by breaking rocks; bars are made in Craft.</div><div class="summary">${cell('ORE',totalOre)}${cell('BARS',totalBars)}${cell('GOLD',game.gold)}</div>`;
@@ -376,7 +388,23 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  }else if(k==='challenges'){
  html='<div class="big-card"><div class="icon">★</div><h2>CHALLENGES</h2><p>Not implemented yet.</p></div>';
 }else if(k==='stats'){
- html=`<div class="section-label">MINER JOURNAL</div>`+[['Miner Level',game.level],['Floor',game.floor],['Deepest Floor',game.highestFloor],['Rocks Broken',game.rocksBroken],['Ore Mined',game.totalMined],['Manual Hits',game.totalClicks],['Pickaxe Damage',pickDamage(game)],['Prestiges',game.prestiges],['Obelisks Defeated',game.obeliskLevel]].map(([name,value])=>`<div class="line"><span>${name}</span><strong>${fmt(value)}</strong></div>`).join('')+`<div class="section-label">RECENT EVENTS</div>`+game.log.map(a=>`<div class="line"><span>${new Date(a.t).toLocaleTimeString()} — ${esc(a.text)}</span></div>`).join('')+'<div class="notice">Journal retains the latest 80 events.</div>';
+ title='STAT PAGES';html=`<div class="stats-pages-label">STAT PAGES</div>`+tabBar('stats',[['1','1'],['2','2'],['3','3']]);
+ const statTable=(name,rows)=>`<section class="stats-table"><h2>${name}</h2>${rows.map(([label,value])=>`<div class="stat-line"><span>${label}</span><strong>${typeof value==='number'?fmt(value):esc(value)}</strong></div>`).join('')}</section>`;
+ if(menuTabs.stats==='1'){
+  html+=`<div class="stats-grid">`+
+   statTable('PICKAXE STATS',[['Damage',pickDamage(game)],['Attack speed',(1000/Math.max(80,270-12*(game.upgrades.attack||0))).toFixed(2)+' hits/s'],['Reach',Math.round(handReach(game))+' px'],['Pickaxe level',game.upgrades.pick||0]])+
+   statTable('BOMB STATS',[['Basic Bomb damage',bombDamage(game)],['Charges',game.bombs+' / '+game.bombMax],['Recharge',BOMB_RECHARGE_SECONDS+'s / charge'],['Next charge',secs(bombRechargeInfo().remaining)]])+
+   statTable('DRONE STATS',[['Unlocked',game.drone?'YES':'NO'],['Level',game.drone?game.droneLevel:'—'],['Attack rate',game.drone?(5/Math.max(1,1+.15*game.droneLevel)).toFixed(2)+'s':'—']])+
+   statTable('MISC STATS',[['Miner Level',game.level],['Highest Floor',game.highestFloor],['Obelisks Defeated',game.obeliskLevel],['Prestige Count',game.prestiges]])+`</div>`;
+ }else if(menuTabs.stats==='2'){
+  html+=`<div class="stats-grid">`+
+   statTable('MINING PROGRESS',[['Current Floor',game.floor],['Floor Cleared',getFloorProgress(game)+' / '+floorQuota(game.floor)],['Rocks Broken',game.rocksBroken],['Ore Mined',game.totalMined]])+
+   statTable('ECONOMY',[['Gold',game.gold],['Gems',game.gems],['Prestige Points',game.prestigePoints||0],['Manual Hits',game.totalClicks]])+`</div>`;
+ }else{
+  html+=`<div class="section-label">RECENT ACTIVITY</div>`+
+   (game.log||[]).slice(0,20).map(a=>`<div class="line"><span>${esc(a.text)}</span><small>${new Date(a.t).toLocaleTimeString()}</small></div>`).join('')+
+   `<div class="tiny-help">Showing recorded activity only. Unsupported statistics are not estimated.</div>`;
+ }
  }else if(k==='settings'){
  title='OPTIONS';html=tabBar('settings',[['general','GENERAL'],['gameplay','GAMEPLAY'],['display','DISPLAY'],['offline','OFFLINE'],['menus','MENUS'],['sound','SOUND'],['numbers','NUMBERS'],['saving','SAVING']]);
  const t=menuTabs.settings;
@@ -437,7 +465,7 @@ $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn'
  $('drawerContent').addEventListener('click',e=>{const action=e.target.closest('[data-draw-action]')?.dataset.drawAction;if(action==='select-basic'){renderQuickDrawer();}else if(action==='fire'){detonate();renderQuickDrawer();}});
  $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
 $('statusToggle').addEventListener('click',()=>{const rail=$('statusGroup');const collapsed=rail.classList.toggle('collapsed');$('statusToggle').setAttribute('aria-expanded',String(!collapsed));$('statusToggle').textContent=collapsed?'▸':'▾';});
- $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('droneQuick').onclick=()=>openMenu('drones');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
+ $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('obeliskQuick').onclick=()=>{menuTabs.obelisk='fight';openMenu('obelisk');};$('statsQuick').onclick=()=>openMenu('stats');$('currenciesQuick').onclick=()=>openMenu('currencies');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
  updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{if(!game.autoFloorUnlocked){if(game.obeliskLevel>=AUTO_FLOOR_OBELISK_GATE)openMenu('skills');else notice('AUTO-FLOOR LOCKED · REACH OBELISK '+AUTO_FLOOR_OBELISK_GATE);return;}setAutoFloor(game,!game.autoFloor);const advanced=advanceCompletedFloors();save();updateHud();if(!advanced)notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
