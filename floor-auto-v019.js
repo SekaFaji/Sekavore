@@ -27,5 +27,5 @@ export function setAutoFloor(s,enabled){
  s.autoFloor=Boolean(enabled);return true;
 }
 export function shouldAutoAdvance(s,canAdvance){
- return s.autoFloorUnlocked===true&&s.autoFloor===true&&s.floor===s.highestFloor&&Boolean(canAdvance);
+ return s.autoFloorUnlocked===true&&s.autoFloor===true&&Boolean(canAdvance);
 }
