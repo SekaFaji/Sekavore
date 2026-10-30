@@ -25,7 +25,7 @@ jobs:
         run: |
           node --check core.js
           node --check game.js
-          node --check floor-selector-v024.js
+          node --check floor-selector-v024.js bomb-controls-v025.js
           npm test
       - name: Assemble only public site files
         run: |
