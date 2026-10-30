@@ -1,4 +1,4 @@
-import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
+import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
 import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from './floor-auto-v019.js';
@@ -296,26 +296,43 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
   html+=`<div class="floor-entry ${f===game.floor?'current':''} ${!available?'floor-locked':''}"><div class="floor-tile">${f}</div><div class="floor-detail"><strong>${f===game.floor?'◈ ':''}Floor ${f}</strong><small>${names||'Unknown ore'}</small><span>${visited?`${Math.min(floorQuota(f),getFloorProgress(game,f))} / ${floorQuota(f)} rocks · ${complete?'CLEARED':'IN PROGRESS'}`:available?'READY TO ENTER':'CLEAR CURRENT DEEPEST FLOOR'}</span></div><button class="btn ${f===game.floor?'secondary':'gold'}" data-act="floor:${f}" ${f===game.floor||!available?'disabled':''}>${f===game.floor?'HERE':!available?'LOCKED':'GO'}</button></div>`;
  }
  }else if(k==='upgrades'){
- html=`<div class="summary">${cell('GOLD',game.gold)}${cell('MINER LV',game.level)}${cell('PICK DMG',pickDamage(game))}</div><div class="upgrade-toolbar"><span>THIS PRESTIGE · RESETS</span><button data-act="toggle-max" class="btn secondary">${hideMaxUpgrades?'SHOW':'HIDE'} MAXED</button></div>`+
- UPGRADE_DEFS.filter(u=>!hideMaxUpgrades||(game.upgrades[u.id]||0)<u.cap).map(u=>{
- let lv=game.upgrades[u.id]||0,price=upgradeCost(u,lv),mat=upgradeMaterials(u,lv),max=lv>=u.cap,locked=game.level<u.req;
- let enough=!max&&!locked&&game.gold>=price&&(!mat||game.bars[mat.ore.id]>=mat.qty);
- const current=(u.id==='pick'?fmt(pickDamage(game)):'Lv '+lv),next=max?'MAX':u.id==='pick'?fmt(pickDamage({...game,upgrades:{...game.upgrades,pick:lv+1}})):'Lv '+(lv+1);
- return `<div class="upgrade-line"><span class="upgrade-icon">${u.icon}</span><div class="upgrade-body"><div class="upgrade-title">${u.name}</div><div class="upgrade-sub">${locked?'Unlocks at miner Lv '+u.req:current+' → '+next}</div><div class="upgrade-price">${max?'MAXED':locked?'MINER LV '+u.req:`◉ ${fmt(price)}${mat?'  ◆ '+mat.qty+' '+mat.ore.name:''}`}</div></div><div class="upgrade-right"><small>${lv}/${u.cap}</small><button class="btn ${max?'good':enough?'danger':'secondary'}" data-act="upgrade:${u.id}" ${!enough?'disabled':''}>${max?'MAXED':locked?'LOCK':'BUY'}</button></div></div>`;
- }).join('');
-}else if(k==='craft'||k==='sell'){
- title=k==='craft'?'CRAFT BARS':'SELL ORES';html=`<div class="panel-intro">${k==='craft'?'Convert mined ore into bars for progression and crafting.':'Sell ore to earn the gold needed for upgrades. Select each ore or sell everything.'}</div><div class="summary">${cell('GOLD',game.gold)}${cell('ORE',Object.values(game.ore).reduce((a,b)=>a+b,0))}${cell('BARS',Object.values(game.bars).reduce((a,b)=>a+b,0))}</div>`;
- if(k==='sell')html+=`<div class="menu-toolstrip"><div class="quantity-strip">${[[.1,'10%'],[.25,'25%'],[.5,'50%'],[1,'ALL']].map(([v,label])=>`<button class="micro-btn ${sellFraction===v?'chosen':''}" data-act="fraction:${v}">${label}</button>`).join('')}</div><button class="micro-btn gold" data-act="sellall">SELL SELECTED</button></div><div class="tiny-help">🔒 Locked ores are skipped when selling.</div>`;
- else html+=`<div class="menu-toolstrip"><span class="small-label">CRAFT QUANTITY</span><div class="quantity-strip">${[[1,'1'],[10,'10'],[Infinity,'MAX']].map(([n,label])=>`<button class="micro-btn ${craftBatch===n?'chosen':''}" data-act="batch:${label==='MAX'?'all':n}">${label}</button>`).join('')}</div></div>`;
- html+=`<div class="section-label">${k==='craft'?'BARS / MATERIALS':'ORE STOCKPILE'}</div>`;
- html+=ORES.filter(o=>game.highestFloor>=o.min).map(o=>{
- const have=game.ore[o.id]||0,enabled=k==='craft'?have>=o.craft:have>0;
- const locked=!!game.sellLocks[o.id];
- const can=enabled&&(k==='craft'||!locked);
- const desc=k==='craft'?`HAVE ${fmt(have)} ORE  ·  ${fmt(game.bars[o.id]||0)} BARS`:`STOCK ${fmt(have)} · ◉ ${fmt(o.price)} EACH`;
- const cost=k==='craft'?`◆ ${o.craft} ORE / BAR`:`◉ ${fmt(have*o.price)} TOTAL VALUE`;
- return `<div class="resource-line"><div class="resource-glyph" style="color:${o.color}">◆</div><div class="resource-body"><strong>${o.name} ${k==='craft'?'Bar':'Ore'}</strong><span>${desc}</span><small>${cost}</small></div><div class="resource-actions">${k==='sell'?`<button title="${locked?'Unlock':'Lock'} ${o.name}" aria-label="${locked?'Unlock':'Lock'} ${o.name}" class="micro-btn lock-icon ${locked?'chosen':''}" data-act="lock:${o.id}">${locked?'🔒':'🔓'}</button>`:''}<button class="micro-btn buy ${!can?'muted':''}" data-act="${k}:${o.id}" ${!can?'disabled':''}>${k==='craft'?'CRAFT':'SELL'}</button></div></div>`;
- }).join('');
+ title='UPGRADES';
+ const upgradeRow=u=>{
+  const lv=game.upgrades[u.id]||0,price=upgradeCost(u,lv),mat=upgradeMaterials(u,lv),max=lv>=u.cap,locked=game.level<u.req;
+  const can=!max&&!locked&&game.gold>=price&&(!mat||(game.bars[mat.ore.id]||0)>=mat.qty);
+  const current=u.id==='pick'?fmt(pickDamage(game)):'Lv '+lv;
+  const next=max?'MAX':u.id==='pick'?fmt(pickDamage({...game,upgrades:{...game.upgrades,pick:lv+1}})):'Lv '+(lv+1);
+  const priceText=max?'MAXED':locked?'REQUIRES LV '+u.req:`◉ ${fmt(price)}${mat?'  ◆ '+fmt(mat.qty)+' '+mat.ore.name:''}`;
+  return `<div class="upgrade-line econ-upgrade ${locked?'econ-locked':''} ${max?'econ-maxed':''}"><span class="upgrade-icon" aria-hidden="true">${u.icon}</span><div class="upgrade-body"><div class="upgrade-title">${u.name}</div><div class="upgrade-sub">${locked?'UNLOCK AT MINER LV '+u.req:current+' → '+next}</div><div class="upgrade-price">${priceText}</div></div><div class="upgrade-right"><small>${lv}/${u.cap}</small><button class="btn ${max?'good':can?'danger':'secondary'}" data-act="upgrade:${u.id}" aria-label="${max?'Maxed':locked?'Locked':'Buy'} ${u.name}" ${!can?'disabled':''}>${max?'MAXED':locked?'LOCK':'BUY'}</button></div></div>`;
+ };
+ const available=UPGRADE_DEFS.filter(u=>!hideMaxUpgrades||(game.upgrades[u.id]||0)<u.cap);
+ html=`<div class="econ-screen econ-upgrades"><div class="econ-summary">${cell('GOLD',game.gold)}${cell('MINER LV',game.level)}${cell('PICK DMG',pickDamage(game))}</div><div class="econ-toolbar"><span>THIS PRESTIGE · RESETS</span><button class="micro-btn" data-act="toggle-max" aria-pressed="${hideMaxUpgrades}">${hideMaxUpgrades?'SHOW MAXED':'HIDE MAXED'} ☰</button></div>`;
+ const pick=available.filter(u=>u.id==='pick'),regular=available.filter(u=>u.id!=='pick');
+ if(pick.length)html+='<div class="econ-heading">PICKAXE</div>'+pick.map(upgradeRow).join('');
+ if(regular.length)html+='<div class="econ-heading">WORLD 1 · REGULAR</div>'+regular.map(upgradeRow).join('');
+ if(!available.length)html+='<div class="econ-empty">All upgrades are maxed. Use SHOW MAXED to display them.</div>';
+ html+='</div>';
+ }else if(k==='craft'||k==='sell'){
+ const crafting=k==='craft',totalOre=Object.values(game.ore).reduce((a,b)=>a+b,0),totalBars=Object.values(game.bars).reduce((a,b)=>a+b,0);
+ const visible=ORES.filter(o=>game.highestFloor>=o.min);
+ title=crafting?'CRAFT BARS':'SELL ORES';
+ html=`<div class="econ-screen econ-${k}"><div class="econ-summary">${cell('GOLD',game.gold)}${cell('ORE',totalOre)}${cell('BARS',totalBars)}</div>`;
+ if(crafting){
+  html+=`<div class="econ-toolbar"><span>CRAFT AMOUNT</span><div class="quantity-strip">${[[1,'1'],[10,'10'],[Infinity,'MAX']].map(([n,label])=>`<button class="micro-btn ${craftBatch===n?'chosen':''}" aria-pressed="${craftBatch===n}" data-act="batch:${label==='MAX'?'all':n}">${label}</button>`).join('')}</div></div><div class="econ-caption">Each bar consumes its ore cost. Bonus bars can be awarded by your current upgrades.</div>`;
+ }else{
+  const eligible=visible.filter(o=>!game.sellLocks[o.id]);
+  const availableOres=eligible.reduce((sum,o)=>sum+(game.ore[o.id]||0),0);
+  const goldPreview=eligible.reduce((sum,o)=>sum+Math.round(Math.ceil((game.ore[o.id]||0)*sellFraction)*o.price*saleMultiplier(game)),0);
+  html+=`<div class="econ-toolbar"><span>SELL AMOUNT</span><div class="quantity-strip">${[[.1,'10%'],[.25,'25%'],[.5,'50%'],[1,'ALL']].map(([v,label])=>`<button class="micro-btn ${sellFraction===v?'chosen':''}" aria-pressed="${sellFraction===v}" data-act="fraction:${v}">${label}</button>`).join('')}</div></div><div class="econ-locktools"><button class="micro-btn" data-act="lockall" aria-label="Lock all visible ores">LOCK ALL</button><button class="micro-btn" data-act="unlockall" aria-label="Unlock all visible ores">UNLOCK ALL</button><span>${eligible.length}/${visible.length} unlocked</span></div><div class="econ-sell-summary"><span>${fmt(availableOres)} unlocked ore in stock</span><strong>SELL PREVIEW ◉ ${fmt(goldPreview)}</strong><button class="micro-btn buy" data-act="sellall" ${goldPreview<=0?'disabled':''}>SELL UNLOCKED</button></div>`;
+ }
+ html+=`<div class="econ-heading">${crafting?'CRAFT BARS · AVAILABLE ORES':'ORE STOCKPILE'}</div>`;
+ html+=visible.map(o=>{
+  const have=game.ore[o.id]||0,locked=!!game.sellLocks[o.id],possible=Math.floor(have/o.craft),quantity=crafting?Math.min(possible,craftBatch):Math.ceil(have*sellFraction),can=crafting?quantity>0:quantity>0&&!locked;
+  const total=crafting?quantity:Math.round(quantity*o.price*saleMultiplier(game));
+  const desc=crafting?`ORE ${fmt(have)}  ·  BARS ${fmt(game.bars[o.id]||0)}  ·  ${fmt(o.craft)} / BAR`:`ORE ${fmt(have)}  ·  ◉ ${fmt(o.price)} EACH`;
+  const details=crafting?`${quantity?'CRAFT '+fmt(quantity)+' BAR'+(quantity===1?'':'S'):'NEED '+fmt(o.craft)+' ORE'}${quantity?' · COST '+fmt(quantity*o.craft)+' ORE':''}`:`${locked?'LOCKED · ':''}SELL ${fmt(quantity)}  →  ◉ ${fmt(total)}`;
+  return `<div class="econ-resource ${locked&&!crafting?'econ-locked':''}"><div class="econ-ore-icon" style="--ore-color:${o.color};--ore-edge:${o.edge}" aria-hidden="true">◆</div><div class="econ-resource-body"><strong>${o.name} ${crafting?'Bar':'Ore'}</strong><span>${desc}</span><small>${details}</small></div><div class="econ-resource-actions">${crafting?'':`<button class="micro-btn econ-lock ${locked?'chosen':''}" title="${locked?'Unlock':'Lock'} ${o.name}" aria-label="${locked?'Unlock':'Lock'} ${o.name}" aria-pressed="${locked}" data-act="lock:${o.id}">${locked?'🔒':'🔓'}</button>`}<button class="micro-btn buy" data-act="${k}:${o.id}" ${!can?'disabled':''}>${crafting?'CRAFT':'SELL'}</button></div></div>`;
+ }).join('')+'</div>';
  }else if(k==='bombs'){
  title='BOMBS';html=`<div class="section-label">BOMB CHARGES</div><div class="summary">${cell('AVAILABLE',game.bombs+' / '+game.bombMax)}${cell('BLAST DMG',bombDamage(game))}${cell('RECHARGE','1 / '+BOMB_RECHARGE_SECONDS+'s')}</div>`+
  `<div class="resource-line"><div class="resource-glyph">✹</div><div class="resource-body"><strong>BASIC BOMB</strong><span>Hits the full visible mining field</span><small>${game.bombs} charges available · no damage to the boss</small></div><div class="resource-actions"><button class="micro-btn buy" data-act="bomb" ${game.bombs<1||bossFight?'disabled':''}>FIRE</button></div></div>`+
@@ -392,6 +409,7 @@ $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest(
  }
  if(act.startsWith('batch:')){craftBatch=act==='batch:all'?Infinity:Number(act.split(':')[1]);renderMenu();return;}
  if(act.startsWith('fraction:')){sellFraction=Number(act.split(':')[1]);renderMenu();return;}
+ if(act==='lockall'||act==='unlockall'){for(const o of ORES.filter(o=>game.highestFloor>=o.min))game.sellLocks[o.id]=act==='lockall';save();renderMenu();return;}
  if(act.startsWith('lock:')){const id=act.split(':')[1];game.sellLocks[id]=!game.sellLocks[id];save();renderMenu();return;}
  if(act.startsWith('upgrade:')){changed=buyUpgrade(game,act.split(':')[1]);if(changed)playSfx('success');}
  else if(act.startsWith('artifact:'))changed=buyArtifact(game,act.split(':')[1]);
