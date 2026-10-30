@@ -300,16 +300,18 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  title='ACTIVITY LOG';html=`<div class="section-label">RECENT ACTIVITY</div>${(game.log||[]).slice(0,35).map(l=>`<div class="line"><span>${esc(l.text)}</span><small>${new Date(l.t).toLocaleTimeString()}</small></div>`).join('')||'<div class="notice">No events recorded yet.</div>'}`;
 }else if(k==='currencies'){
  title='CURRENCIES';
- html=tabBar('currencies',[['ores','ORE + BARS'],['bars','BARS'],['wallet','FUNDS']]);
+ const categories=[['ores','◈','ORES + BARS'],['bars','▰','BARS'],['wallet','✦','CURRENCIES']];
+ html=`<div class="currency-v026"><div class="currency-category-tabs" role="tablist" aria-label="Resource categories">`+
+ categories.map(([id,icon,label])=>`<button type="button" role="tab" aria-selected="${menuTabs.currencies===id}" class="currency-category ${menuTabs.currencies===id?'selected':''}" data-tab="currencies:${id}" title="${label}" aria-label="${label}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join('')+`</div>`;
  if(menuTabs.currencies==='wallet'){
-  html+=`<div class="section-label">CURRENCIES</div>`+
-   `<div class="currency-ledger">${[['Gold',game.gold,'◉'],['Gems',game.gems,'◆'],['Prestige Points',game.prestigePoints||0,'✦']].map(([name,qty,icon])=>`<div class="currency-ledger-row"><span>${icon} ${name}</span><strong>${fmt(qty)}</strong></div>`).join('')}</div>`;
+  html+=`<div class="currency-ledger currency-wallet" role="table" aria-label="Current currencies"><div class="currency-ledger-head" role="row"><span>CURRENCY</span><span>AMOUNT</span></div>`+
+   [['Gold',game.gold,'◉'],['Gems',game.gems,'◆'],['Prestige Points',game.prestigePoints||0,'✦'],['Skill Points',game.skillPoints||0,'◈']].map(([name,qty,icon])=>`<div class="currency-ledger-row" role="row"><span>${icon} ${name}</span><strong>${fmt(qty)}</strong></div>`).join('')+`</div>`;
  }else{
-  html+=`<div class="section-label">${menuTabs.currencies==='bars'?'CRAFTED BARS':'ORE AND BARS'}</div>`+
-  `<div class="currency-ledger" role="table" aria-label="Owned ore and crafted bars"><div class="currency-ledger-head" role="row"><span>RESOURCE</span><span>ORE</span><span>BARS</span></div>`+
-  ORES.filter(o=>o.min<=game.highestFloor||game.ore[o.id]||game.bars[o.id]).map(o=>`<div class="currency-ledger-row" role="row"><span class="currency-ore-name">${pixelOreIcon(o)}${o.name}</span><strong>${menuTabs.currencies==='bars'?'—':fmt(game.ore[o.id]||0)}</strong><strong>${fmt(game.bars[o.id]||0)}</strong></div>`).join('')+`</div>`;
+  const showBars=menuTabs.currencies==='bars';
+  html+=`<div class="currency-ledger" role="table" aria-label="Owned ore and crafted bars"><div class="currency-ledger-head" role="row"><span>RESOURCE</span><span>${showBars?'CRAFTED BARS':'ORE'}</span><span>${showBars?'ORE / BAR':'BARS'}</span></div>`+
+  ORES.filter(o=>o.min<=game.highestFloor||game.ore[o.id]||game.bars[o.id]).map(o=>`<div class="currency-ledger-row" role="row"><span class="currency-ore-name">${pixelOreIcon(o)}${o.name}</span><strong>${fmt(showBars?(game.bars[o.id]||0):(game.ore[o.id]||0))}</strong><strong>${showBars?o.craft:fmt(game.bars[o.id]||0)}</strong></div>`).join('')+`</div>`;
  }
- html+=`<div class="currency-footer"><button class="micro-btn buy" data-menu="bag">OPEN ORE BAG</button></div>`;
+ html+=`<div class="currency-footer"><span>ONLY UNLOCKED OR OWNED RESOURCES APPEAR</span><button class="micro-btn buy" data-menu="bag">ORE BAG</button></div></div>`;
  }else if(k==='bag'){
  title='ORE BAG';
  const totalOre=Object.values(game.ore).reduce((a,b)=>a+b,0),totalBars=Object.values(game.bars).reduce((a,b)=>a+b,0);
@@ -415,23 +417,29 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  }else if(k==='challenges'){
  html='<div class="big-card"><div class="icon">★</div><h2>CHALLENGES</h2><p>Not implemented yet.</p></div>';
 }else if(k==='stats'){
- title='STAT PAGES';html=`<div class="stats-pages-label">STAT PAGES</div>`+tabBar('stats',[['1','1'],['2','2'],['3','3']]);
+ title='STAT PAGES';
  const statTable=(name,rows)=>`<section class="stats-table"><h2>${name}</h2>${rows.map(([label,value])=>`<div class="stat-line"><span>${label}</span><strong>${typeof value==='number'?fmt(value):esc(value)}</strong></div>`).join('')}</section>`;
+ const n=key=>game.upgrades[key]||0;
+ const recharge=bombRechargeInfo();
+ html=`<div class="stats-v026"><div class="stats-topbar"><span>STAT PAGES</span>`+tabBar('stats',[['1','1'],['2','2'],['3','3']])+`</div>`;
  if(menuTabs.stats==='1'){
   html+=`<div class="stats-grid">`+
-   statTable('PICKAXE STATS',[['Damage',pickDamage(game)],['Attack speed',(1000/Math.max(80,270-12*(game.upgrades.attack||0))).toFixed(2)+' hits/s'],['Reach',Math.round(handReach(game))+' px'],['Pickaxe level',game.upgrades.pick||0]])+
-   statTable('BOMB STATS',[['Basic Bomb damage',bombDamage(game)],['Charges',game.bombs+' / '+game.bombMax],['Recharge',BOMB_RECHARGE_SECONDS+'s / charge'],['Next charge',secs(bombRechargeInfo().remaining)]])+
-   statTable('DRONE STATS',[['Unlocked',game.drone?'YES':'NO'],['Level',game.drone?game.droneLevel:'—'],['Attack rate',game.drone?(5/Math.max(1,1+.15*game.droneLevel)).toFixed(2)+'s':'—']])+
-   statTable('MISC STATS',[['Miner Level',game.level],['Highest Floor',game.highestFloor],['Obelisks Defeated',game.obeliskLevel],['Prestige Count',game.prestiges]])+`</div>`;
+   statTable('PICKAXE STATS',[['Damage',pickDamage(game)],['Attack Speed',(1000/Math.max(80,270-12*n('attack'))).toFixed(2)+'/s'],['Radius',Math.round(handReach(game))+' px'],['Pickaxe Level',n('pick')],['Crit Upgrade',n('crit')],['Multi-Rock Upgrade',n('multirock')]])+
+   statTable('BOMB STATS',[['Bomb Damage',bombDamage(game)],['Charges',game.bombs+' / '+game.bombMax],['Recharge Rate',recharge.rate+'s / charge'],['Next Charge',secs(recharge.remaining)],['Until Full',secs(recharge.full)],['Bomb Upgrade',n('bomb')]])+
+   statTable('DRONE STATS',[['Unlocked',game.drone?'YES':'NO'],['Drone Level',game.drone?game.droneLevel:'—'],['Drone Points',game.drone?game.dronePoints:'—'],['Attack Interval',game.drone?(5/Math.max(1,1+.15*game.droneLevel)).toFixed(2)+'s':'—']])+
+   statTable('MISC STATS',[['Miner Level',game.level],['Deepest Floor',game.highestFloor],['Prestiges',game.prestiges],['Obelisks Defeated',game.obeliskLevel],['Gems Owned',game.gems]])+`</div>`;
  }else if(menuTabs.stats==='2'){
   html+=`<div class="stats-grid">`+
-   statTable('MINING PROGRESS',[['Current Floor',game.floor],['Floor Cleared',getFloorProgress(game)+' / '+floorQuota(game.floor)],['Rocks Broken',game.rocksBroken],['Ore Mined',game.totalMined]])+
-   statTable('ECONOMY',[['Gold',game.gold],['Gems',game.gems],['Prestige Points',game.prestigePoints||0],['Manual Hits',game.totalClicks]])+`</div>`;
+   statTable('FLOOR PROGRESS',[['Current Floor',game.floor],['Deepest Floor',game.highestFloor],['Floor Cleared',getFloorProgress(game)+' / '+floorQuota(game.floor)],['Auto-Floor',game.autoFloorUnlocked?(game.autoFloor?'ON':'OFF'):'LOCKED']])+
+   statTable('MINING TOTALS',[['Rocks Broken',game.rocksBroken],['Ore Mined',game.totalMined],['Manual Hits',game.totalClicks]])+
+   statTable('ECONOMY',[['Gold',game.gold],['Gems',game.gems],['Prestige Points',game.prestigePoints||0],['Skill Points',game.skillPoints||0]])+
+   statTable('CRAFT / SELL',[['Ore Types',Object.values(game.ore).filter(v=>v>0).length],['Bar Types',Object.values(game.bars).filter(v=>v>0).length],['Locked Ore Types',Object.values(game.sellLocks||{}).filter(Boolean).length]])+`</div>`;
  }else{
-  html+=`<div class="section-label">RECENT ACTIVITY</div>`+
-   (game.log||[]).slice(0,20).map(a=>`<div class="line"><span>${esc(a.text)}</span><small>${new Date(a.t).toLocaleTimeString()}</small></div>`).join('')+
-   `<div class="tiny-help">Showing recorded activity only. Unsupported statistics are not estimated.</div>`;
+  html+=`<div class="section-label">RECENT ACTIVITY</div><div class="stats-activity">`+
+   ((game.log||[]).length?(game.log||[]).slice(0,20).map(a=>`<div class="line"><span>${esc(a.text)}</span><small>${new Date(a.t).toLocaleTimeString()}</small></div>`).join(''):'<div class="stats-empty">No activity recorded yet.</div>')+`</div>`+
+   `<div class="tiny-help">Only recorded or directly calculated statistics are shown.</div>`;
  }
+ html+=`</div>`;
  }else if(k==='settings'){
  title='OPTIONS';html=tabBar('settings',[['general','GENERAL'],['gameplay','GAMEPLAY'],['display','DISPLAY'],['offline','OFFLINE'],['menus','MENUS'],['sound','SOUND'],['numbers','NUMBERS'],['saving','SAVING']]);
  const t=menuTabs.settings;
