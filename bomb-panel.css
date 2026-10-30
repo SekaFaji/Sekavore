@@ -37,3 +37,10 @@
 .bomb-progress{height:9px;background:#0e141c;border:1px solid #725e66;box-shadow:inset 1px 1px #100e12;overflow:hidden}
 .bomb-progress span{display:block;height:100%;background:linear-gradient(90deg,#5a9d82,#a7e7ae);transition:width .2s linear}
 @media(max-width:365px){.quick-drawer[data-kind="bombs"]{min-height:0}.quick-drawer[data-kind="bombs"] .bomb-inventory-slot{height:35px;width:35px}}
+
+/* v0.25 — independent single/bulk bomb firing; automation remains locked. */
+.bomb-auto-lock{flex:none;width:43px;min-height:30px;background:#342a35;border:1px solid #77616c;color:#bfb1b8;font-size:7px;line-height:1.2;opacity:.8}
+.bomb-panel-footer{min-height:42px;align-items:stretch}.bomb-footer-status{flex:1;gap:2px}.bomb-footer-status small{line-height:1.25}
+.bomb-action-row{display:flex;align-items:stretch;gap:3px;flex:none}.bomb-fire-one,.bomb-fire-all{width:42px;min-width:0;min-height:44px;background:linear-gradient(#b8434e,#85202a);color:#ffebd6;border:2px solid #210d13;box-shadow:inset 1px 1px #e37d80;font-size:9px;letter-spacing:0;line-height:1.2;padding:2px}
+.bomb-fire-all small{display:inline;font-size:7px}.bomb-fire-one:disabled,.bomb-fire-all:disabled{opacity:.45;filter:grayscale(1)}
+@media(max-width:365px){.bomb-fire-one,.bomb-fire-all{width:38px;font-size:8px}.bomb-footer-status small{font-size:6px}}
