@@ -13,8 +13,6 @@ Open http://localhost:8080.
 npm test
 ```
 
-## Latest update (v0.20)
-Mining field polish: subtle ambience, textured stone, animated ore facets and sharper rock hit feedback. Progression, auto-floor, Bombs, Drones, Consumables and saves are unchanged.
+## Latest update (v0.21)
 
-## Deploy
-GitHub Pages deploys from `main` using the included workflow.
+Mining now regenerates rock waves only after a full clear, floor progress is capped at its quota, and Auto-Floor can resume through previously cleared floors. Combat economy, saves, and artwork remain unchanged.
