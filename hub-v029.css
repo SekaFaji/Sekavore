@@ -59,3 +59,11 @@
  .hub-mode .hub-label{font-size:7px;line-height:1;}
  .hub-mode .hub-bottom-tools{margin-bottom:2px;padding-top:1px;}
 }
+/* v0.30: lock requirements remain readable and interactive. */
+.hub-mode .hub-locked .hub-note{color:#f2ca8e;opacity:1;font-weight:700}
+.hub-mode .hub-preview .hub-note{color:#ddc8bb;opacity:1}
+.hub-mode .hub-tile[data-availability="locked"]:focus-visible,
+.hub-mode .hub-tile[data-availability="preview"]:focus-visible{outline:2px solid #f4ca8d;outline-offset:2px}
+/* Explanatory notices must be visible above open menus. */
+.stage>.toast{z-index:22}
+.overlay>.toast{z-index:22;top:16%}
