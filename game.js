@@ -1,4 +1,4 @@
-import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
+import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,floorOrePopulation,awardWaveClear,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
 import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from './floor-auto-v019.js';
@@ -44,7 +44,7 @@ function notice(message){const el=$('toast');const host=currentMenu?$('overlay')
 function playSfx(kind='hit'){if(!game.settings.sound)return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!window.audioContext)window.audioContext=new AC();const ac=window.audioContext;const osc=ac.createOscillator(),gain=ac.createGain();osc.type=kind==='bomb'?'sawtooth':kind==='success'?'triangle':'square';osc.frequency.setValueAtTime(kind==='bomb'?70:kind==='success'?740:170,ac.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='bomb'?42:kind==='success'?480:85,ac.currentTime+.12);gain.gain.setValueAtTime(.045,ac.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.14);osc.connect(gain);gain.connect(ac.destination);osc.start();osc.stop(ac.currentTime+.16);}catch{}}
 let nextWaveAt=0,waveNumber=0;
 function spawnRocks(){
- nextWaveAt=0;rocks=createWave(game.floor,floorQuota(game.floor),(x,y)=>{
+ nextWaveAt=0;rocks=createWave(game.floor,floorOrePopulation(game.floor),(x,y)=>{
   const ore=oreAtFloor(game.floor),hp=rockHealth(game.floor)*(.65+Math.random()*.75);
   return {id:rockId++,x,y,ore:ore.id,hp,max:hp,variant:Math.floor(Math.random()*4),size:13+Math.random()*4};
  });
@@ -78,9 +78,13 @@ function mineRock(rock,mode='tap',power=1){
  awardRock(game,ore,amt);spark(rock.x,rock.y,'+'+amt+' '+ore.name,'#8ce7c0',4);
  rocks.splice(rocks.indexOf(rock),1);
  if(game.rocksBroken%13===0){game.gems+=1;spark(rock.x,rock.y-23,'+1 ◆','#49d8f2',4);}
- if(canNextFloor(game)&&advanceCompletedFloors()){save();return;}
- if(!wasCleared&&canNextFloor(game))notice('FLOOR CLEARED! ▲ TO DESCEND');
- if(rocks.length===0){nextWaveAt=performance.now()+WAVE_REFRESH_MS;droneMotion.targetId=null;}
+ if(rocks.length===0){
+  const wasReady=canNextFloor(game);
+  awardWaveClear(game);
+  if(canNextFloor(game)&&advanceCompletedFloors()){save();return;}
+  if(!wasReady&&canNextFloor(game))notice('FLOOR READY! ▲ TO DESCEND');
+  nextWaveAt=performance.now()+WAVE_REFRESH_MS;droneMotion.targetId=null;
+ }
  save();
 }
 // One sweep hits every rock inside the hand's radius; it never locks to a single rock.
@@ -110,7 +114,7 @@ function drawHand(){
  pix(-6,15,17,7,'#804b3a');pix(-6,16,15,3,'#ffdd74');
  ctx.restore();
 }
-function changeFloor(direction){const old=game.floor;if(direction>0&&!canNextFloor(game)&&game.floor>=game.highestFloor){notice('MINE '+Math.max(0,floorQuota(game.floor)-game.rocksThisFloor)+' MORE ROCKS TO DESCEND');return;}if(moveFloor(game,direction)){spawnRocks();notice('FLOOR '+game.floor);save();}else notice(direction<0?'ALREADY AT FIRST FLOOR':'FLOOR NOT CLEARED');}
+function changeFloor(direction){const old=game.floor;if(direction>0&&!canNextFloor(game)&&game.floor>=game.highestFloor){notice('CLEAR '+Math.max(0,floorQuota(game.floor)-getFloorProgress(game))+' MORE WAVES TO DESCEND');return;}if(moveFloor(game,direction)){spawnRocks();updateHud();notice('FLOOR '+game.floor);save();}else notice(direction<0?'ALREADY AT FIRST FLOOR':'FLOOR NOT CLEARED');}
 function detonate(mode='single'){
  if(bossFight){notice('BOMBS CANNOT DAMAGE THE OBELISK');return 0;}
  const count=bombSpendCount(game.bombs,mode);
@@ -198,7 +202,7 @@ const statusPixel=type=>({
 function statusEntries(){
  const charge=bombRechargeInfo();
  const data=[
-  {id:'floors',icon:'floor',name:'Floor progress',value:`${game.rocksThisFloor}/${floorQuota(game.floor)}`,sub:'',progress:Math.min(100,100*game.rocksThisFloor/floorQuota(game.floor))},
+  {id:'floors',icon:'floor',name:'Floor waves',value:`${getFloorProgress(game)}/${floorQuota(game.floor)}`,sub:'',progress:Math.min(100,100*getFloorProgress(game)/floorQuota(game.floor))},
   {id:'bombs',icon:'bombs',name:'Bomb recharge',value:`${charge.charges}/${charge.cap}`,sub:charge.remaining?secs(charge.remaining):'FULL',progress:charge.progress}
  ];
  if(game.drone)data.push({id:'drones',icon:'drones',name:'Drone',value:'ACTIVE',sub:droneMotion.targetId?'FLYING':droneMotion.ready?'READY':'MINING',progress:null});
@@ -209,7 +213,7 @@ function statusEntries(){
 function renderStatusRail(){
  $('statusGroup').innerHTML=statusEntries().map(x=>`<button type="button" class="hud-effect ${x.sub?'hud-effect-timed':''}" data-side="${x.id}" title="${x.name}" aria-label="${x.name}: ${x.value}${x.sub?' '+x.sub:''}"><span class="status-glyph">${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>${x.value}</strong>${x.sub?`<small>${x.sub}</small>`:''}</span>${x.progress!==null?`<i style="--charge:${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
 }
-function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&rocks.length===0?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):game.rocksThisFloor+' / '+floorQuota(game.floor);$('quotaFill').style.width=Math.min(100,game.rocksThisFloor/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
+function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;$('floorCurrentCount').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&rocks.length===0?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):getFloorProgress(game)+' / '+floorQuota(game.floor)+' WAVES';$('quotaFill').style.width=Math.min(100,getFloorProgress(game)/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
  $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
  renderStatusRail();
  $('obeliskQuickState').textContent=game.bossReadyAt>Date.now()?'WAIT':'FIGHT';const itemMeter=chestStatus(game,'item'),relicMeter=chestStatus(game,'relic');$('chestFill').style.height=itemMeter.percent.toFixed(1)+'%';$('starFill').style.height=relicMeter.percent.toFixed(1)+'%';$('itemChestMeter').title='Item chests · '+itemMeter.owned+' ready · '+Math.floor(itemMeter.progress)+' / '+itemMeter.target+' damage';$('relicChestMeter').title='Relic chests · '+relicMeter.owned+' ready · '+Math.floor(relicMeter.progress)+' / '+relicMeter.target+' damage';$('autoFloorState').textContent=!game.autoFloorUnlocked?'LOCK':game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);$('autoFloor').classList.toggle('locked',!game.autoFloorUnlocked);$('autoFloor').title=game.autoFloorUnlocked?'Toggle automatic floor advance':'Unlock through Skill Tree after Obelisk '+AUTO_FLOOR_OBELISK_GATE;}
@@ -433,7 +437,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
 }else if(k==='artifacts'){
  html=`<div class="panel-intro">Spend Prestige Points on permanent artifacts.</div><div class="summary">${cell('POINTS',game.prestigePoints)}${cell('PRESTIGES',game.prestiges)}${cell('DAMAGE',pickDamage(game))}</div>`+ARTIFACTS.map(a=>{let lvl=game.artifacts[a.id],cost=artifactCost(a,lvl);return item('✦',a.name,a.desc,'✦ '+fmt(cost)+' prestige pts','artifact:'+a.id,lvl>=a.cap?'MAXED':'UPGRADE',lvl<a.cap&&game.prestigePoints>=cost,lvl+'/'+a.cap)}).join('');
 }else if(k==='workshop'){
- html=`<div class="panel-intro">Unlocked by your first Obelisk defeat. This study implements a basic craftable bonus.</div>`+item('⚒','Reinforced Handle','A permanent small boost to drone damage.','◉ '+fmt(300+game.dronePoints*180)+' gold','workshop:reinforce','CRAFT',game.gold>=300+game.dronePoints*180,game.dronePoints+' upgrades');
+ html=`<div class="panel-intro">Permanent Workshop (Obelisk 1). Reinforced Handle is the only implemented recipe. Other workshop recipes remain unavailable.</div>`+item('⚒','Reinforced Handle','A permanent small boost to drone damage.','◉ '+fmt(300+game.dronePoints*180)+' gold','workshop:reinforce','CRAFT',game.gold>=300+game.dronePoints*180,game.dronePoints+' upgrades');
 }else if(k==='skills'){
  title='SKILL TREE';const unlocked=game.autoFloorUnlocked;
  html=`<div class="section-label">SKILL TREE · FLOOR AUTOMATION</div><div class="summary">${cell('SKILL POINTS',game.skillPoints)}${cell('GEMS',game.gems)}${cell('OBELISK',game.obeliskLevel)}</div>`+
@@ -442,7 +446,7 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  `<div class="resource-line"><div class="resource-glyph">↧</div><div class="resource-body"><strong>AUTO-FLOOR ACCESS</strong><span>Automatically descend after clearing the deepest floor.</span><small>${unlocked?'UNLOCKED · survives Prestige':game.skillPoints+' / '+AUTO_FLOOR_SKILL_COST+' Skill Points required'}</small></div><div class="resource-actions"><button class="micro-btn ${unlocked?'good':'buy'}" data-act="autounlock" ${!unlocked&&game.skillPoints>=AUTO_FLOOR_SKILL_COST?'':'disabled'}>${unlocked?'OWNED':'UNLOCK'}</button></div></div>`+
  `<div class="tiny-help">Once unlocked, switch AUTO ON/OFF on the right floor controls. It never skips required rocks and stays OFF until you enable it.</div>`;
  }else if(k==='challenges'){
- html='<div class="big-card"><div class="icon">★</div><h2>CHALLENGES</h2><p>Not implemented yet.</p></div>';
+ html='<div class="section-label">CHALLENGES · OBELISK 10</div><div class="panel-intro">Challenges award permanent upgrade currency in the reference. Challenge Coins and their bonuses are not yet implemented in Sekavore.</div>';
 }else if(k==='stats'){
  title='STAT PAGES';
  const statTable=(name,rows)=>`<section class="stats-table"><h2>${name}</h2>${rows.map(([label,value])=>`<div class="stat-line"><span>${label}</span><strong>${typeof value==='number'?fmt(value):esc(value)}</strong></div>`).join('')}</section>`;
@@ -553,7 +557,7 @@ $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn'
  });
  $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
 $('statusToggle').addEventListener('click',()=>{const rail=$('statusGroup');const collapsed=rail.classList.toggle('collapsed');$('statusToggle').setAttribute('aria-expanded',String(!collapsed));$('statusToggle').textContent=collapsed?'▸':'▾';});
- $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('obeliskQuick').onclick=()=>{menuTabs.obelisk='fight';openMenu('obelisk');};$('statsQuick').onclick=()=>openMenu('stats');$('currenciesQuick').onclick=()=>openMenu('currencies');$('floorPair').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
+ $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('obeliskQuick').onclick=()=>{menuTabs.obelisk='fight';openMenu('obelisk');};$('statsQuick').onclick=()=>openMenu('stats');$('currenciesQuick').onclick=()=>openMenu('currencies');$('floorPair').onclick=()=>openMenu('floors');$('floorCurrentCount').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
  updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{if(!game.autoFloorUnlocked){if(game.obeliskLevel>=AUTO_FLOOR_OBELISK_GATE)openMenu('skills');else notice('AUTO-FLOOR LOCKED · REACH OBELISK '+AUTO_FLOOR_OBELISK_GATE);return;}setAutoFloor(game,!game.autoFloor);const advanced=advanceCompletedFloors();save();updateHud();if(!advanced)notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
