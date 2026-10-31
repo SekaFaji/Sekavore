@@ -23,3 +23,6 @@ Statistics now show compact grouped Pickaxe, Bomb, Drone and Misc tables, and Cu
 
 ## Permanent Relics
 Relic chests grant supported permanent bonuses. Current Common–Legendary effects use a limited research reward pool; advanced effects, exact tier odds and original thresholds remain unverified.
+
+## v0.30
+The Menu Hub now shows Obelisk unlock requirements, distinguishes future previews from playable systems, and provides feedback when a locked icon is pressed. Gameplay and saves are unchanged.
