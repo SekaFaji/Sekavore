@@ -1,0 +1,7 @@
+/* Compact relic-chest controls; no new game art. */
+.relic-tier-heading{background:#62505b;border:1px solid #927a83;padding:5px 7px;font-size:10px;text-transform:uppercase;margin:9px 0 3px;color:#f6dfc4}
+.relic-reward-row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px;padding:6px 7px;background:#191b23;border:1px solid #493d47;margin:2px 0;font-size:10px}
+.relic-reward-row strong{color:#e3ddd8}.relic-reward-row small{display:block;color:#b2aeb4;margin-top:3px}.relic-quantity{color:#ffda81;font-size:12px;min-width:28px;text-align:right}
+.relic-open-actions{display:flex;justify-content:center;gap:8px;margin:10px 0}.relic-open-actions .btn{min-width:84px}
+.relic-bonus-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:8px 0}.relic-bonus-summary div{font-size:9px;background:#161a22;padding:5px;border:1px solid #5d4756}
+.relic-bonus-summary b{display:block;color:#f3ca6f;padding-top:3px}
