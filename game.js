@@ -6,6 +6,7 @@ import {worldForFloor,worldTabs,worldBounds,floorPairs,highestSelectableFloor,is
 import {bombSpendCount,nextBombHoldAt,BOMB_HOLD_INTERVAL_MS} from './bomb-controls-v025.js';
 import {normalizeChests,recordChestDamage,chestStatus,openItemChests} from './chests-v027.js';
 import {normalizeRelics,relicBonus,RELIC_REWARDS,RELIC_TIERS,relicCount,openRelicChests} from './relics-v028.js';
+import {HUB_MILESTONES,hubAvailability,hubFeedback} from './hub-access-v030.js';
 
 const $=id=>document.getElementById(id);const canvas=$('field');let ctx=canvas.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const SAVE_KEY='deep-mine-research-v2';
@@ -39,7 +40,7 @@ function advanceBombRecharge(delta){if(game.bombs>=game.bombMax){game.bombCharge
 
 function save(){game.lastSaved=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){notice('Browser storage blocked — use Export Save.');}}
 function eventLog(message){game.log.unshift({t:Date.now(),text:message});game.log=game.log.slice(0,80);}
-function notice(message){const el=$('toast');el.textContent=message;el.classList.add('show');toastUntil=performance.now()+2500;}
+function notice(message){const el=$('toast');const host=currentMenu?$('overlay'):$('field').parentElement;if(el.parentElement!==host)host.appendChild(el);el.textContent=message;el.classList.add('show');toastUntil=performance.now()+2500;}
 function playSfx(kind='hit'){if(!game.settings.sound)return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!window.audioContext)window.audioContext=new AC();const ac=window.audioContext;const osc=ac.createOscillator(),gain=ac.createGain();osc.type=kind==='bomb'?'sawtooth':kind==='success'?'triangle':'square';osc.frequency.setValueAtTime(kind==='bomb'?70:kind==='success'?740:170,ac.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='bomb'?42:kind==='success'?480:85,ac.currentTime+.12);gain.gain.setValueAtTime(.045,ac.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.14);osc.connect(gain);gain.connect(ac.destination);osc.start();osc.stop(ac.currentTime+.16);}catch{}}
 let nextWaveAt=0,waveNumber=0;
 function spawnRocks(){
@@ -223,7 +224,7 @@ const TEMP_MENU=[
 ];
 const PERM_MENU=[
  ['prestige','✦','PRESTIGE','Permanent progression'],['drones','◇','DRONES','Drone upgrades and settings'],
- ['chests','▣','CHESTS','Future system'],['relics','◈','RELICS','Future system'],
+ ['chests','▣','CHESTS','Item chest progress and rewards'],['relics','◈','RELICS','Permanent relic chest bonuses'],
  ['store','▤','STORE','Gems and packs'],['workshop','⚒','WORKSHOP','Permanent improvements'],
  ['skills','✥','SKILL TREE','Unlockable skills'],['challenges','★','CHALLENGES','Unlock challenges'],
  ['cards','▦','CARDS','Future system'],['pets','♧','PETS','Future system'],
@@ -232,8 +233,6 @@ const PERM_MENU=[
  ['future','▧','LOCKED','Future system']
 ];
 const OTHER_MENU=[['stats','☷','STATS','Progress'],['cloud','⇧','CLOUD','Not available'],['settings','⚙','OPTIONS','Save, sound, display'],['logs','▤','LOGS','Activity history']];
-const previewOnly=new Set(['contracts','cloud','cards','pets','stars','construct','fishing','archaeology','future']);
-const menuLevels={workshop:1,skills:4,challenges:10,cards:15,pets:17,stars:23};
 const menuTabs={obelisk:'fight',drones:'upgrades',settings:'general',stats:'1',currencies:'ores'};
 let selectedFloorWorld=1; // navigation-only state, not part of the save
 let hideMaxUpgrades=false,pinEdit=false,pinEditIndex=0,sellFraction=1;
@@ -296,16 +295,17 @@ const tabBar=(menu,items)=>`<div class="subtabs" role="tablist" aria-label="${me
 // Compact icon-first Hub tiles. The icon framing and colours are original artwork/CSS.
 // The button proportions are tuned for portrait mobile screens.
 const hubSection=(label,arr)=>`<section class="hub-section"><div class="hub-heading">${label}</div><div class="hub-grid">${arr.map(([id,ico,name,description])=>{
- const locked=!isUnlocked(id),preview=previewOnly.has(id),inactive=locked||preview;
+ const access=hubAvailability(id,game.obeliskLevel);
+ const locked=access.state==='locked',preview=access.state==='preview',inactive=locked||preview;
  const lockBadge=locked?`<span class="hub-padlock" aria-hidden="true"></span>`:'';
- const sub=locked?`<span class="hub-note">${menuLevels[id]}</span>`:preview?'<span class="hub-note">SOON</span>':'';
+ const sub=locked?`<span class="hub-note">OB ${access.gate}</span>`:preview?'<span class="hub-note">SOON</span>':'';
+ const tooltip=hubFeedback(id,name,game.obeliskLevel);
  return `<div class="hub-cell ${inactive?'hub-locked':''} ${preview?'hub-preview':''}">
- <button type="button" class="hub-tile hub-${id}" data-menu="${id}" aria-label="${name}${locked?' locked':preview?' preview':''}" title="${description}" ${inactive?'aria-disabled="true"':''} ${preview?'disabled':''}>
+ <button type="button" class="hub-tile hub-${id}" data-menu="${id}" aria-label="${tooltip}" title="${tooltip}" data-availability="${access.state}">
  <span class="hub-icon-box" aria-hidden="true"><span class="hub-glyph">${ico}</span></span>${lockBadge}</button>
  <span class="hub-label">${name}</span>${sub}</div>`;
  }).join('')}</div></section>`;
-function isUnlocked(k){return !(k in menuLevels)||game.obeliskLevel>=menuLevels[k];}
-function openMenu(menu){bombHeld=false;if(quickDrawer)closeQuickDrawer();if(previewOnly.has(menu)){notice('FEATURE NOT IMPLEMENTED IN RESEARCH BUILD');return;}if(!isUnlocked(menu)){notice('DEFEAT MORE OBELISKS TO UNLOCK');return;}currentMenu=menu;if(menu==='floors')selectedFloorWorld=worldForFloor(game.floor);holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('floor-select-mode',menu==='floors');$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
+function openMenu(menu){bombHeld=false;if(quickDrawer)closeQuickDrawer();const access=hubAvailability(menu,game.obeliskLevel);if(!access.available){const entry=[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===menu);notice(hubFeedback(menu,entry?.[2]||menu,game.obeliskLevel));return;}currentMenu=menu;if(menu==='floors')selectedFloorWorld=worldForFloor(game.floor);holdRock=null;hand.held=false;holdPoint=null;$('overlay').classList.toggle('floor-select-mode',menu==='floors');$('overlay').classList.toggle('hub-mode',menu==='hub');$('game').classList.toggle('hub-visible',menu==='hub');$('overlay').classList.remove('hidden');$('overlay').setAttribute('aria-hidden','false');renderMenu();$('panelContent').scrollTop=0;}
 function closeMenu(){currentMenu=null;$('overlay').classList.remove('floor-select-mode');$('overlay').classList.remove('hub-mode');$('game').classList.remove('hub-visible');$('overlay').classList.add('hidden');$('overlay').setAttribute('aria-hidden','true');}
 function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',title=k.toUpperCase();if(k==='hub'){
  title='MENU HUB';html=hubSection('PERMANENT',PERM_MENU)+hubSection('THIS PRESTIGE',TEMP_MENU)+hubSection('MISCELLANEOUS',OTHER_MENU)+`<div class="hub-bottom-tools"><button class="setup-pins ${pinEdit?'active':''}" data-act="edit-pins">${pinEdit?'DONE PINS':'SETUP PINS'}</button><div class="pin-mini-row" aria-label="Choose quick pin to edit">${game.menuPins.map((id,idx)=>{const found=[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===id);return `<button type="button" class="pin-mini ${pinEdit&&pinEditIndex===idx?'selected':''}" data-pinpick="${idx}" aria-label="Edit pin ${idx+1}, currently ${found?.[2]||id}" title="Pin ${idx+1}: ${found?.[2]||id}"><span>${found?.[1]||'▦'}</span></button>`;}).join('')}</div></div>`;
@@ -425,8 +425,8 @@ function renderMenu(){if(!currentMenu)return;const k=currentMenu;let html='',tit
  }else if(menuTabs.obelisk==='rewards'){
  html+=`<div class="section-label">OBELISK VICTORY REWARDS</div><div class="summary">${cell('WINS',game.obeliskLevel)}${cell('CURRENT',game.obeliskLevel+1)}${cell('CLAIMS','—')}</div><div class="resource-line disabled-research"><div class="resource-glyph">✦</div><div class="resource-body"><strong>REWARDS</strong><span>Rewards are claimable in v2.2.50+</span><small>TABLE & REQUIREMENTS UNVERIFIED</small></div><div class="resource-actions"><button class="micro-btn buy" disabled>CLAIM</button></div></div><div class="tiny-help">No claimable rewards are simulated or granted in this prototype.</div>`;
  }else if(menuTabs.obelisk==='unlocks'){
- html+=`<div class="panel-intro">Milestones below are prototype approximations pending level-by-level reference verification.</div><div class="section-label">PROGRESSION UNLOCKS</div>`;
- for(const [n,feature] of [[1,'Workshop'],[2,'Advanced Drones'],[4,'Skill Tree'],[10,'Challenges'],[15,'Cards'],[17,'Pets'],[23,'Stargazing']])html+=`<div class="unlock-row"><span>OB ${n}</span><strong>${feature}</strong><small class="${game.obeliskLevel>=n?'unlocked':''}">${game.obeliskLevel>=n?'UNLOCKED':'LOCKED'}</small></div>`;
+ html+=`<div class="panel-intro">Historical milestone reference. Systems labeled PREVIEW are not playable in this build.</div><div class="section-label">PROGRESSION UNLOCKS</div>`;
+ for(const [id,feature] of HUB_MILESTONES){const access=hubAvailability(id,game.obeliskLevel);html+=`<div class="unlock-row"><span>OB ${access.gate}</span><strong>${feature}</strong><small class="${access.available?'unlocked':''}">${access.state==='locked'?'LOCKED':access.state==='preview'?'PREVIEW':'AVAILABLE'}</small></div>`;}
  }else html+=`<div class="panel-intro">Obelisk fights have armor reduction before critical bonuses. Progress toward defeating the current Obelisk remains between attempts.</div><div class="line"><span>Attempt duration</span><strong>30 seconds (prototype)</strong></div><div class="line"><span>Bombs</span><strong>Cannot damage Obelisk</strong></div><div class="notice">Original balance and exact reward sequence require further runtime reference footage.</div>`;
 }else if(k==='prestige'){
  let pp=availablePrestige(game);html=`<div class="big-card"><div class="icon">✦</div><h2>PRESTIGE RESET</h2><p>Reach level 20 to Prestige.<br>Your current reward: <b>${fmt(pp)} prestige points</b>.</p><button class="btn" data-act="prestige" ${!pp?'disabled':''}>PRESTIGE +${pp} POINTS</button></div><div class="notice">Prestige resets level, floor, gold, ores, bars and regular upgrades. Keeps artifacts, gems, drone and Obelisk progression.</div><div class="section-label">PRESTIGE COUNT: ${game.prestiges}</div>`;
@@ -484,7 +484,7 @@ $('confirmCancel').onclick=()=>$('confirm').classList.add('hidden');
 $('panelContent').addEventListener('click',e=>{const pinChoice=e.target.closest('button[data-pinpick]');if(pinChoice){pinEdit=true;pinEditIndex=Number(pinChoice.dataset.pinpick)||0;renderMenu();return;}const btn=e.target.closest('button[data-menu],button[data-act],button[data-tab]');if(!btn)return;if(btn.dataset.menu){
   const id=btn.dataset.menu;
   if(pinEdit&&currentMenu==='hub'&&id!=='hub'){
-   if(!isUnlocked(id)||previewOnly.has(id))return notice('CANNOT PIN LOCKED OR UNAVAILABLE MENU');
+   if(!hubAvailability(id,game.obeliskLevel).available)return notice(hubFeedback(id,[...TEMP_MENU,...PERM_MENU,...OTHER_MENU].find(r=>r[0]===id)?.[2]||id,game.obeliskLevel));
    game.menuPins[pinEditIndex]=id;pinEditIndex=(pinEditIndex+1)%3;
    save();updatePinnedMenus();renderMenu();return;
   }
