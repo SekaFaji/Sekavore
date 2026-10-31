@@ -1,0 +1,61 @@
+/* v0.29 — compact single-screen Menu Hub. Presentation only. */
+.hub-mode .panel{min-height:0;height:100%;}
+.hub-mode .panel-scroll{
+ display:flex;flex-direction:column;min-height:0;overflow:hidden;
+ padding:clamp(5px,1.1dvh,11px) 4px 5px;
+ scrollbar-width:none;
+}
+.hub-mode .hub-section{flex:0 0 auto;margin:0 0 clamp(5px,.75dvh,9px);}
+.hub-mode .hub-heading{
+ width:54%;height:clamp(15px,2dvh,18px);min-height:0;
+ padding:1px 0 1px 10px;justify-content:flex-start;text-align:left;
+ font-size:clamp(8px,1.18dvh,10px);line-height:1;
+}
+.hub-mode .hub-grid{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:clamp(2px,.45dvh,4px) 0;
+ margin:clamp(3px,.65dvh,6px) 0 0;padding:0 3px;
+ justify-items:stretch;align-items:start;
+}
+.hub-mode .hub-grid .hub-cell{
+ min-height:clamp(43px,6.45dvh,58px);height:clamp(43px,6.45dvh,58px);
+ display:flex;align-items:center;justify-content:flex-start;flex-direction:column;
+ min-width:0;gap:0;
+}
+.hub-mode .hub-tile{
+ width:clamp(31px,4.8dvh,43px);height:clamp(31px,4.8dvh,43px);
+ min-height:clamp(31px,4.8dvh,43px);flex:none;
+ border-width:2px;margin:0;
+}
+.hub-mode .hub-icon-box{width:75%;height:75%;}
+.hub-mode .hub-glyph{font-size:clamp(17px,2.6dvh,24px);}
+.hub-mode .hub-label{
+ font-size:clamp(7px,1.16dvh,9px);line-height:1.05;
+ margin-top:2px;min-height:0;white-space:normal;overflow-wrap:normal;
+}
+.hub-mode .hub-note{font-size:clamp(6px,.9dvh,7px);line-height:1;margin:0;}
+.hub-mode .hub-bottom-tools{
+ flex:0 0 auto;display:flex;align-items:end;justify-content:flex-end;
+ margin:auto 7px clamp(4px,1.2dvh,10px) 0;
+ padding-top:4px;gap:clamp(3px,1dvw,7px);
+ position:static;right:auto;
+}
+.hub-mode .setup-pins{
+ min-width:clamp(48px,6.7dvh,60px);
+ min-height:clamp(32px,5dvh,42px);
+ padding:3px 4px;font-size:clamp(7px,1.05dvh,9px);
+}
+.hub-mode .pin-mini-row{gap:clamp(2px,.8dvw,5px);}
+.hub-mode .pin-mini{width:clamp(26px,3.8dvh,32px);height:clamp(26px,3.8dvh,32px);}
+.hub-mode .pin-mini span{font-size:clamp(13px,2dvh,17px);}
+@media(max-height:630px){
+ .hub-mode .panel-scroll{padding-top:3px;padding-bottom:1px;}
+ .hub-mode .hub-section{margin-bottom:3px;}
+ .hub-mode .hub-heading{height:13px;}
+ .hub-mode .hub-grid{margin-top:2px;gap:1px 0;}
+ .hub-mode .hub-grid .hub-cell{height:36px;min-height:36px;}
+ .hub-mode .hub-tile{width:29px;height:29px;min-height:29px;}
+ .hub-mode .hub-glyph{font-size:16px;}
+ .hub-mode .hub-label{font-size:7px;line-height:1;}
+ .hub-mode .hub-bottom-tools{margin-bottom:2px;padding-top:1px;}
+}
