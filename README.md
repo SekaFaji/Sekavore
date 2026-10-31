@@ -20,3 +20,6 @@ Mining now regenerates rock waves only after a full clear, floor progress is cap
 ## v0.26
 
 Statistics now show compact grouped Pickaxe, Bomb, Drone and Misc tables, and Currencies has compact tabs for ores, bars and funds. These pages show the current tracked game state and introduce no new gameplay content. The previous Bomb control behavior is preserved.
+
+## Permanent Relics
+Relic chests grant supported permanent bonuses. Current Common–Legendary effects use a limited research reward pool; advanced effects, exact tier odds and original thresholds remain unverified.
