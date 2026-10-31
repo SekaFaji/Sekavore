@@ -11,5 +11,5 @@ test('Hub fits one screen and has no fixed spacer',()=>{
 });
 test('Hub styling is included in the published site',()=>{
  assert.match(read('index.html'),/href="hub-v029\.css"/);
- assert.match(read('.github/workflows/pages.yml'),/hub-v029\.css \.nojekyll _site\//);
+ assert.match(read('.github/workflows/pages.yml'),/hub-v029\\.css(?:\\s+[^\\n]*)? \\.nojekyll _site\\//);
 });
