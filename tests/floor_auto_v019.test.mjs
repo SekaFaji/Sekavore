@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {newGame,prestige,awardRock,canNextFloor,travelToFloor,ORES} from '../core.js';
+import {newGame,prestige,awardRock,canNextFloor,awardWaveClear,floorQuota,travelToFloor,ORES} from '../core.js';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from '../floor-auto-v019.js';
 test('auto-floor starts locked and old toggle cannot bypass the gate',()=>{
  const s=newGame();delete s.autoFloorUnlocked;delete s.skillPoints;s.autoFloor=true;
@@ -20,7 +20,7 @@ test('three skill points and Obelisk 4 required before permanent unlock',()=>{
 test('advance only after clearing deepest floor; cannot skip',()=>{
  const s=newGame();s.obeliskLevel=4;s.autoFloorUnlocked=true;s.autoFloor=true;
  assert.equal(shouldAutoAdvance(s,canNextFloor(s)),false);
- for(let i=0;i<9;i++)awardRock(s,ORES[0]);
+ for(let i=0;i<floorQuota(1);i++)awardWaveClear(s);
  assert.equal(shouldAutoAdvance(s,canNextFloor(s)),true);
  assert.equal(travelToFloor(s,2),true);
  assert.equal(travelToFloor(s,4),false);

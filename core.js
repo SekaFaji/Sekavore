@@ -37,23 +37,48 @@ export const saleMultiplier=s=>(1+0.10*(s.upgrades.sell||0))*(1+0.12*(s.artifact
 export const bombDamage=s=>Math.round(pickDamage(s)*5*(1+0.2*(s.upgrades.bomb||0))*(1+0.3*(s.artifacts.blast||0))*(1+relicBonus(s,'bomb')));
 export const xpMultiplier=s=>(1+0.10*(s.artifacts.growth||0))*(1+relicBonus(s,'xp'));
 export const oreAtFloor=(floor,r=Math.random)=>{let choices=ORES.filter(o=>floor>=o.min&&floor<=o.max);if(!choices.length)choices=ORES.filter(o=>o.min<=floor).slice(-3);return choices[Math.floor(r()*choices.length)]||ORES[0];};
-export const floorQuota=f=>Math.round(6+f*3);
+// Floor unlocks count completed waves, not the number of individual mined rocks.
+// Early-game 150-wave quota is provisional pending original-version confirmation.
+export const floorQuota=f=>150;
+export const floorOrePopulation=f=>Math.round(6+f*3);
+export const legacyRockQuota=f=>Math.round(6+f*3);
+export function normalizeFloorProgress(s){
+ if(s.floorProgressMode==='waves-v031')return s;
+ const old=s.floorProgress && typeof s.floorProgress==='object'?s.floorProgress:{[s.floor]:s.rocksThisFloor||0};
+ const migrated={};
+ for(const [key,value] of Object.entries(old)){
+  const floor=Number(key);if(!Number.isSafeInteger(floor)||floor<1)continue;
+  const fraction=Math.min(1,Math.max(0,(Number(value)||0)/legacyRockQuota(floor)));
+  migrated[key]=Math.round(fraction*floorQuota(floor));
+ }
+ for(let f=1;f<(s.highestFloor||1);f++)migrated[f]=floorQuota(f);
+ if(!Object.hasOwn(migrated,s.floor))migrated[s.floor]=Math.round(Math.min(1,Math.max(0,(s.rocksThisFloor||0)/legacyRockQuota(s.floor)))*floorQuota(s.floor));
+ s.floorProgress=migrated;s.floorProgressMode='waves-v031';s.rocksThisFloor=migrated[s.floor]||0;
+ return s;
+}
+export function awardWaveClear(s){
+ normalizeFloorProgress(s);
+ const prev=getFloorProgress(s),next=Math.min(floorQuota(s.floor),prev+1);
+ s.floorProgress[s.floor]=next;s.rocksThisFloor=next;
+ return next-prev;
+}
 export const rockHealth=f=>Math.round(9*Math.pow(1.35,f-1));
 export const bossTotal=level=>Math.round(900*Math.pow(2.7,level));
 export const bossArmor=level=>Math.round(5*Math.pow(1.9,level));
 export const availablePrestige=s=>s.level<20?0:Math.max(1,Math.floor(Math.pow(s.level-19,1.25)*(1+0.02*s.highestFloor)*(1+relicBonus(s,'prestige'))));
 const nobj=()=>Object.fromEntries(ORES.map(o=>[o.id,0]));
-export function newGame(){return {version:2,gold:0,gems:0,level:1,xp:0,levelCap:20,floor:1,highestFloor:1,rocksBroken:0,rocksThisFloor:0,floorProgress:{1:0},ore:nobj(),bars:nobj(),upgrades:Object.fromEntries(UPGRADE_DEFS.map(u=>[u.id,0])),artifacts:Object.fromEntries(ARTIFACTS.map(u=>[u.id,0])),prestiges:0,prestigePoints:0,obeliskLevel:0,bossRemaining:bossTotal(0),bossReadyAt:0,drone:false,droneLevel:0,dronePoints:0,bombs:3,bombMax:3,bombCharge:0,autoFloor:false,autoFloorUnlocked:false,skillPoints:0,lastSaved:Date.now(),totalClicks:0,totalMined:0,settings:{sound:true},log:[]};}
+export function newGame(){return {version:2,gold:0,gems:0,level:1,xp:0,levelCap:20,floor:1,highestFloor:1,rocksBroken:0,rocksThisFloor:0,floorProgress:{1:0},floorProgressMode:'waves-v031',ore:nobj(),bars:nobj(),upgrades:Object.fromEntries(UPGRADE_DEFS.map(u=>[u.id,0])),artifacts:Object.fromEntries(ARTIFACTS.map(u=>[u.id,0])),prestiges:0,prestigePoints:0,obeliskLevel:0,bossRemaining:bossTotal(0),bossReadyAt:0,drone:false,droneLevel:0,dronePoints:0,bombs:3,bombMax:3,bombCharge:0,autoFloor:false,autoFloorUnlocked:false,skillPoints:0,lastSaved:Date.now(),totalClicks:0,totalMined:0,settings:{sound:true},log:[]};}
 export function grantXp(s,amount){s.xp+=Math.max(0,Math.floor(amount*xpMultiplier(s)));while(s.level<s.levelCap&&s.xp>=LVL_REQ(s.level)){s.xp-=LVL_REQ(s.level);s.level++;}if(s.level>=s.levelCap)s.xp=Math.min(s.xp,LVL_REQ(s.level));}
 // Each floor keeps its own quota even when the player travels back to an older floor.
 // The field is optional on old v0.2 browser saves; it migrates without wiping progress.
 export function getFloorProgress(s, floor=s.floor){
+ normalizeFloorProgress(s);
  if(!s.floorProgress || typeof s.floorProgress!=='object')s.floorProgress={[s.floor]:Math.max(0,s.rocksThisFloor||0)};
  if(!Number.isFinite(s.floorProgress[floor]))s.floorProgress[floor]=0;
  s.floorProgress[floor]=Math.max(0,Math.min(floorQuota(floor),Math.floor(s.floorProgress[floor])));
  return s.floorProgress[floor];
 }
-export function awardRock(s,ore,amount=1){s.ore[ore.id]=(s.ore[ore.id]||0)+amount;s.rocksBroken++;s.rocksThisFloor=Math.min(floorQuota(s.floor),getFloorProgress(s)+1);s.floorProgress[s.floor]=s.rocksThisFloor;s.totalMined+=amount;grantXp(s,3+s.floor*2);}
+export function awardRock(s,ore,amount=1){s.ore[ore.id]=(s.ore[ore.id]||0)+amount;s.rocksBroken++;s.totalMined+=amount;grantXp(s,3+s.floor*2);}
 export function canNextFloor(s){return getFloorProgress(s)>=floorQuota(s.floor);}
 export function travelToFloor(s,destination){
  const next=Math.floor(destination);
