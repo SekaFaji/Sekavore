@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {newGame,awardRock,ORES,craftBars,sellOre,LVL_REQ,pickaxeBase,grantXp,UPGRADE_DEFS,upgradeCost,buyUpgrade,availablePrestige,prestige,offlineGrant,isValidSave,bossArmor} from '../core.js';
+import {newGame,awardRock,awardWaveClear,ORES,craftBars,sellOre,LVL_REQ,pickaxeBase,grantXp,UPGRADE_DEFS,upgradeCost,buyUpgrade,availablePrestige,prestige,offlineGrant,isValidSave,bossArmor} from '../core.js';
 test('initial state & save are valid',()=>{const s=newGame();assert.ok(isValidSave(s));assert.equal(s.floor,1);assert.equal(s.gold,0);assert.equal(s.bombs,3);});
 test('pickaxe base formula is triangular',()=>{assert.equal(pickaxeBase(0),1);assert.equal(pickaxeBase(3),10);});
 test('mine, craft and sell maintain ore accounting',()=>{const s=newGame();awardRock(s,ORES[0],6);assert.equal(s.ore.tin,6);assert.equal(craftBars(s,'tin',1,()=>1),1);assert.equal(s.ore.tin,1);assert.equal(s.bars.tin,1);assert.equal(sellOre(s,'tin'),2);assert.equal(s.gold,2);});
@@ -13,11 +13,11 @@ test('material costs are enforced after early pickaxe levels',()=>{const s=newGa
 test('floor progress persists per floor when revisiting',async()=>{
  const {moveFloor,canNextFloor,floorQuota,getFloorProgress}=await import('../core.js');
  const s=newGame();
- for(let i=0;i<floorQuota(1);i++)awardRock(s,ORES[0]);
+ for(let i=0;i<floorQuota(1);i++)awardWaveClear(s);
  assert.equal(canNextFloor(s),true);
  assert.equal(moveFloor(s,1),true);
  assert.equal(s.floor,2);assert.equal(s.rocksThisFloor,0);
- awardRock(s,ORES[0]);awardRock(s,ORES[0]);
+ awardWaveClear(s);awardWaveClear(s);
  assert.equal(moveFloor(s,-1),true);
  assert.equal(s.rocksThisFloor,floorQuota(1));
  assert.equal(moveFloor(s,1),true);
@@ -30,16 +30,16 @@ test('floor map cannot skip locked floors',async()=>{
  const {travelToFloor,floorQuota}=await import('../core.js');
  const s=newGame();
  assert.equal(travelToFloor(s,2),false);
- for(let i=0;i<floorQuota(1);i++)awardRock(s,ORES[0]);
+ for(let i=0;i<floorQuota(1);i++)awardWaveClear(s);
  assert.equal(travelToFloor(s,3),false);
  assert.equal(travelToFloor(s,2),true);
  assert.equal(travelToFloor(s,3),false);
 });
 
 test('older v0.2 saves migrate floor progress without discarding completed quota',async()=>{
- const {moveFloor,canNextFloor,floorQuota,getFloorProgress}=await import('../core.js');
- const s=newGame();delete s.floorProgress;
- s.floor=3;s.highestFloor=3;s.rocksThisFloor=floorQuota(3);
+ const {moveFloor,canNextFloor,floorQuota,legacyRockQuota,getFloorProgress}=await import('../core.js');
+ const s=newGame();delete s.floorProgress;delete s.floorProgressMode;
+ s.floor=3;s.highestFloor=3;s.rocksThisFloor=legacyRockQuota(3);
  assert.ok(isValidSave(s));assert.equal(canNextFloor(s),true);
  assert.equal(getFloorProgress(s,3),floorQuota(3));
  assert.equal(moveFloor(s,1),true);assert.equal(s.rocksThisFloor,0);
