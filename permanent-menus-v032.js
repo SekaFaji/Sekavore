@@ -32,16 +32,17 @@ function workshopCard(save,blueprint){
  const q=workshopQuote(save,blueprint.id);
  const material=q.requirements.map(r=>'<span class="ws-bar '+(r.owned>=r.needed?'enough':'short')+'">'+barLabel(r.bar)+' <b>'+r.owned+'/'+(blueprint.implemented?r.needed:'?')+'</b></span>').join('');
  const state=q.maxed?'MAXED':!q.unlocked?'OBELISK '+blueprint.obelisk:!blueprint.implemented?'UNAVAILABLE':q.canBuy?'BUY':'NEED BARS';
- return '<div class="pm-row ws-entry"><div class="pm-main"><strong>'+blueprint.name+'</strong><span>'+blueprint.detail+'</span><small>Obelisk '+blueprint.obelisk+' · Level '+q.level+'/'+blueprint.cap+(blueprint.implemented?' · +0.5x / level':'')+'</small><div class="ws-materials">'+material+'</div></div><button type="button" class="pm-action" data-act="workshop:buy:'+blueprint.id+'" '+(q.canBuy?'':'disabled')+'>'+state+'</button></div>';
+ return '<div class="pm-row ws-entry"><div class="pm-main"><strong>'+blueprint.name+'</strong><span>'+blueprint.detail+'</span><small>Obelisk '+blueprint.obelisk+' · Level '+q.level+'/'+blueprint.cap+(blueprint.id==='basicChain'?' · +0.5x / level':'')+'</small><div class="ws-materials">'+material+'</div></div><button type="button" class="pm-action" data-act="workshop:buy:'+blueprint.id+'" '+(q.canBuy?'':'disabled')+'>'+state+'</button></div>';
 }
 export function workshopView(save,tab){
  const summary='<div class="pm-summary"><strong>WORKSHOP</strong><span>Permanent crafted-bar upgrades. Purchasable costs are PROTOTYPE, not reference values.</span></div>';
- if(tab==='bombs')return summary+'<div class="pm-subheading">BOMB BLUEPRINTS</div>'+WORKSHOP_CATALOG.map(b=>workshopCard(save,b)).join('')+'<div class="pm-note">Bar types, Obelisk gates and caps are documented. Prototype quantities: each bar costs (next level). Unsupported bomb types remain unavailable.</div>';
+ if(tab==='bombs')return summary+'<div class="pm-subheading">BOMB BLUEPRINTS</div>'+WORKSHOP_CATALOG.map(b=>workshopCard(save,b)).join('')+'<div class="pm-note">Bar types, Obelisk gates and caps are documented. Prototype quantities: each bar costs (next level). Bomb of Plenty and Experience Bomb have separate ore / XP marks; remaining unsupported bombs are unavailable.</div>';
  if(tab==='mining')return summary+'<div class="pm-subheading">MINING BLUEPRINTS</div>'+
  row('Pickaxe Damage','Permanent pickaxe damage bonus.','Obelisk 6 · Topaz / Obsidian / Demonite · 34 levels · unavailable')+
  row('Advanced crafting','Higher-world upgrades.','Required bars not yet represented in Sekavore');
  const level=workshopQuote(save).level;
  return summary+'<div class="pm-subheading">OWNED WORKSHOP UPGRADES</div>'+
+ ['plenty','experience'].filter(id=>workshopQuote(save,id).level>0).map(id=>{const b=WORKSHOP_CATALOG.find(b=>b.id===id);return '<div class="pm-row"><div class="pm-main"><strong>'+b.name+'</strong><span>'+b.detail+'</span><small>Unlocked · permanent across Prestige</small></div><span class="pm-muted">OWNED</span></div>';}).join('')+
  '<div class="pm-row"><div class="pm-main"><strong>Basic & Chain Damage</strong><span>Basic Bomb multiplier: '+workshopBombMultiplier(save).toFixed(2)+'x</span><small>Level '+level+'/22 · permanent across Prestige</small></div><span class="pm-muted">'+(level?'OWNED':'NOT OWNED')+'</span></div>'+
  '<div class="pm-row"><div class="pm-main"><strong>Reinforced Handle</strong><span>Existing Sekavore drone improvement retained for older saves.</span><small>Previously purchased: '+Math.max(0,save.dronePoints||0)+' · new purchases paused</small></div><span class="pm-muted">LEGACY</span></div>';
 }

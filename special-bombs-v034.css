@@ -1,0 +1,4 @@
+/* v0.34 - visually distinguish selected, unlocked bomb slots. */
+.quick-drawer[data-kind="bombs"] .bomb-inventory-slot.selected{outline:2px solid #ffe39e;outline-offset:-2px;background:#51303b}
+.quick-drawer[data-kind="bombs"] .bomb-inventory-slot[aria-pressed="false"]{border-color:#8b7682}
+.quick-drawer[data-kind="bombs"] .bomb-inventory{min-height:49px}

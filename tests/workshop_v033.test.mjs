@@ -26,8 +26,13 @@ test('Workshop upgrades survive Prestige and legacy saves normalize',()=>{
  assert.equal(workshopQuote(s).level,3);assert.equal(JSON.parse(JSON.stringify(s)).workshopUpgrades.basicChain,3);
  const legacy=newGame();normalizeWorkshop(legacy);assert.equal(workshopQuote(legacy).level,0);
 });
-test('Unimplemented blueprints cannot charge crafted bars',()=>{
- const s=newGame();s.obeliskLevel=99;s.bars.copper=100;s.bars.mithril=100;s.bars.adamant=100;
- assert.equal(workshopQuote(s,'plenty').canBuy,false);
- assert.equal(buyWorkshopUpgrade(s,'plenty'),false);assert.equal(s.bars.copper,100);
+test('Special bomb Workshop unlock costs and limit',()=>{
+ const s=newGame();normalizeWorkshop(s);s.obeliskLevel=1;
+ s.bars.copper=1;s.bars.mithril=1;s.bars.adamant=2;
+ assert.equal(workshopQuote(s,'plenty').canBuy,true);
+ assert.equal(buyWorkshopUpgrade(s,'plenty'),true);
+ assert.equal(s.workshopUpgrades.plenty,1);
+ assert.equal(s.bars.copper,0);
+ assert.equal(buyWorkshopUpgrade(s,'plenty'),false);
+ assert.equal(workshopQuote(s,'experience').unlocked,false);
 });
