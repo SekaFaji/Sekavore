@@ -2,19 +2,22 @@
 // Cost quantities are provisional Sekavore balance, not recovered values.
 export const WORKSHOP_BASIC_CHAIN={id:'basicChain',name:'Basic & Chain Damage',obelisk:1,cap:22,perLevel:0.5,bars:['mithril','adamant','runite']};
 export const WORKSHOP_CATALOG=[
- {id:'plenty',name:'Bomb of Plenty',obelisk:1,bars:['copper','mithril','adamant'],cap:1,detail:'Marks rocks for increased ore output.',implemented:false},
+ {id:'plenty',name:'Bomb of Plenty',obelisk:1,bars:['copper','mithril','adamant'],cap:1,detail:'Marks current rocks for 2x ore on mining.',implemented:true},
  {...WORKSHOP_BASIC_CHAIN,detail:'+0.5x per level to Basic/Chain bomb damage.',implemented:true},
- {id:'experience',name:'Experience Bomb',obelisk:2,bars:['adamant','runite','citrine'],cap:1,detail:'Marks rocks for increased experience.',implemented:false},
+ {id:'experience',name:'Experience Bomb',obelisk:2,bars:['adamant','runite','citrine'],cap:1,detail:'Marks current rocks for 2x XP on mining.',implemented:true},
  {id:'chainShots',name:'Chain Bombs Fired',obelisk:2,bars:['adamant','runite','citrine'],cap:18,detail:'Increases chain bombs fired by +1.',implemented:false}
 ];
 export function normalizeWorkshop(save){
  if(!save.workshopUpgrades||typeof save.workshopUpgrades!=='object'||Array.isArray(save.workshopUpgrades))save.workshopUpgrades={};
- const current=save.workshopUpgrades.basicChain;
- save.workshopUpgrades.basicChain=Number.isSafeInteger(current)?Math.min(WORKSHOP_BASIC_CHAIN.cap,Math.max(0,current)):0;
+ for(const blueprint of WORKSHOP_CATALOG){
+  const current=save.workshopUpgrades[blueprint.id];
+  save.workshopUpgrades[blueprint.id]=Number.isSafeInteger(current)?Math.min(blueprint.cap,Math.max(0,current)):0;
+ }
  return save;
 }
 export function workshopLevel(save,id='basicChain'){
- const level=save?.workshopUpgrades?.[id];return Number.isSafeInteger(level)?Math.max(0,Math.min(WORKSHOP_BASIC_CHAIN.cap,level)):0;
+ const blueprint=WORKSHOP_CATALOG.find(b=>b.id===id);
+ const level=save?.workshopUpgrades?.[id];return blueprint&&Number.isSafeInteger(level)?Math.max(0,Math.min(blueprint.cap,level)):0;
 }
 export function workshopBombMultiplier(save){return 1+WORKSHOP_BASIC_CHAIN.perLevel*workshopLevel(save);}
 export function workshopQuote(save,id='basicChain'){
