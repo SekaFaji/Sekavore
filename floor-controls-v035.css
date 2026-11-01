@@ -1,4 +1,9 @@
-/* Floor picker / ascend / clear-counter or unlocked downward travel. */
+/* Floor picker, upward travel, contextual downward travel, and Auto Next status. */
 .floor-controls .floor-travel-top .control{width:35px!important;min-width:35px!important;min-height:25px!important;height:25px!important;font-size:17px!important;line-height:1}
 .floor-controls .floor-number{min-width:39px;font-variant-numeric:tabular-nums;cursor:default}
 .floor-controls .floor-number.can-travel{cursor:pointer;background:linear-gradient(#99222f,#bc3348)!important;font-size:22px!important}
+/* Auto Next is visibly grey when off/locked and green when enabled, irrespective of base button styles. */
+.floor-controls #autoFloor{background:linear-gradient(#717078,#414149)!important;border-color:#292a31!important;box-shadow:inset 1px 1px #a3a3a9,0 2px #25232a!important;color:#f2f0f0!important}
+.floor-controls #autoFloor #autoFloorState{color:#f2f0f0!important}
+.floor-controls #autoFloor.active{background:linear-gradient(#55c87c,#188142)!important;border-color:#1d5633!important;box-shadow:inset 1px 1px #a7f3bd,0 2px #153f28!important;color:#ffffff!important}
+.floor-controls #autoFloor.active #autoFloorState{color:#ffffff!important}
