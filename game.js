@@ -3,6 +3,7 @@ import {SPECIAL_BOMB_DEFS,normalizeSpecialBombs,specialBombInfo,rechargeSpecialB
 import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,floorOrePopulation,awardWaveClear,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
 import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
+import {floorTravelDisplay,activeRocks,waveComplete} from './floor-controls-v035.js';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from './floor-auto-v019.js';
 import {worldForFloor,worldTabs,worldBounds,floorPairs,highestSelectableFloor,isFloorSelectable} from './floor-selector-v024.js';
 import {bombSpendCount,nextBombHoldAt,BOMB_HOLD_INTERVAL_MS} from './bomb-controls-v025.js';
@@ -62,12 +63,12 @@ function advanceCompletedFloors(){
  return advanced;
 }
 function processWaveRefresh(now=performance.now()){
- if(!bossFight&&!rocks.length&&nextWaveAt&&now>=nextWaveAt){spawnRocks();updateHud();}
+ if(!bossFight&&waveComplete(rocks)&&nextWaveAt&&now>=nextWaveAt){spawnRocks();updateHud();}
 }
 spawnRocks();
 function spark(x,y,label,color='#fff3db',qty=1){if(particles.length>110)particles.splice(0,10);particles.push({x,y,label,color,ttl:0.9,dx:(Math.random()-.5)*28,dy:-26-Math.random()*18});for(let i=0;i<qty;i++)particles.push({x:x+(Math.random()-.5)*12,y:y+(Math.random()-.5)*8,label:null,color,ttl:.30+Math.random()*.25,dx:(Math.random()-.5)*38,dy:(Math.random()-.5)*47});}
 function mineRock(rock,mode='tap',power=1){
- if(!rock||!rocks.includes(rock)||bossFight)return;
+ if(!rock||rock.hp<=0||!rocks.includes(rock)||bossFight)return;
  const dmg=mode==='drone'?Math.max(1,Math.round(pickDamage(game)*(.6+.2*game.droneLevel+.10*game.dronePoints))):Math.round(damageRoll(game)*power);
  const appliedDamage=Math.min(Math.max(0,rock.hp),Math.max(0,dmg));
  const gainedChests=recordChestDamage(game,appliedDamage);
@@ -77,12 +78,12 @@ function mineRock(rock,mode='tap',power=1){
  if(mode==='tap'){game.totalClicks++;playSfx('hit');}
  if(rock.hp>0)return;
  if(selectedRock===rock)selectedRock=null;
- const wasCleared=canNextFloor(game),ore=ORES.find(o=>o.id===rock.ore)||ORES[0];
+ const ore=ORES.find(o=>o.id===rock.ore)||ORES[0];
  const amt=(Math.random()<.03*(game.upgrades.multirock||0))?2:1;
  const gained=awardRock(game,ore,amt,rockMarkReward(rock));spark(rock.x,rock.y,'+'+gained+' '+ore.name,'#8ce7c0',4);
- rocks.splice(rocks.indexOf(rock),1);
+ rock.hp=0; // Leave the mined node visible until the entire wave respawns.
  if(game.rocksBroken%13===0){game.gems+=1;spark(rock.x,rock.y-23,'+1 ◆','#49d8f2',4);}
- if(rocks.length===0){
+ if(waveComplete(rocks)){
   const wasReady=canNextFloor(game);
   awardWaveClear(game);
   if(canNextFloor(game)&&advanceCompletedFloors()){save();return;}
@@ -96,7 +97,7 @@ function swingHand(x=hand.x,y=hand.y){
  if(currentMenu||bossFight)return 0;
  hand.x=Math.max(18,Math.min(342,x));hand.y=Math.max(42,Math.min(560,y));
  hand.lastSwing=performance.now();hand.swingUntil=hand.lastSwing+165;
- const hit=targetsInReach([...rocks],hand.x,hand.y,handReach(game));
+ const hit=targetsInReach(activeRocks(rocks),hand.x,hand.y,handReach(game));
  selectedRock=hit.length?hit.sort((a,b)=>Math.hypot(a.x-hand.x,a.y-hand.y)-Math.hypot(b.x-hand.x,b.y-hand.y))[0]:null;
  game.totalClicks++;playSfx('hit');
  for(const rock of hit){if(rocks.includes(rock))mineRock(rock,'hand');}
@@ -124,25 +125,25 @@ function detonate(mode='single',type=selectedBomb){
  if(type!=='basic'){
   const count=applySpecialBomb(game,type,rocks,mode);
   if(!count){notice('NO CHARGES OR ALL ROCKS ALREADY MARKED');return 0;}
-  notice(SPECIAL_BOMB_DEFS[type].name.toUpperCase()+' · MARKED '+rocks.length+' ROCKS');
+  notice(SPECIAL_BOMB_DEFS[type].name.toUpperCase()+' · MARKED '+activeRocks(rocks).length+' ROCKS');
   eventLog(SPECIAL_BOMB_DEFS[type].name+' fired');save();updateHud();return count;
  }
  const count=bombSpendCount(game.bombs,mode);
  if(!count){notice('BOMBS RECHARGING');return 0;}
- if(!rocks.length){notice('WAIT FOR THE NEXT ROCK WAVE');return 0;}
+ if(!activeRocks(rocks).length){notice('WAIT FOR THE NEXT ROCK WAVE');return 0;}
  game.bombs-=count;
  // All charges hit the currently visible wave; they never skip to future waves.
  const power=Math.max(1,bombDamage(game)/Math.max(1,pickDamage(game)))*count;
- playSfx('bomb');for(const r of [...rocks])if(rocks.includes(r))mineRock(r,'blast',power);
+ playSfx('bomb');for(const r of activeRocks(rocks))mineRock(r,'blast',power);
  for(let i=0;i<Math.min(22,10+count*2);i++)spark(35+Math.random()*275,130+Math.random()*290,'','#f5a351',1);
  notice(mode==='all'?'FIRED '+count+' BASIC BOMBS':'BASIC BOMB — AREA DAMAGE');
  save();updateHud();return count;
 }
 // One visual drone and one mining target. Damage occurs only after it reaches that rock.
-function nearestDroneRock(){return rocks.reduce((best,r)=>!best||((r.x-droneMotion.x)**2+(r.y-22-droneMotion.y)**2)<((best.x-droneMotion.x)**2+(best.y-22-droneMotion.y)**2)?r:best,null);}
+function nearestDroneRock(){return activeRocks(rocks).reduce((best,r)=>!best||((r.x-droneMotion.x)**2+(r.y-22-droneMotion.y)**2)<((best.x-droneMotion.x)**2+(best.y-22-droneMotion.y)**2)?r:best,null);}
 function advanceDrone(dt){
  if(!game.drone||bossFight)return;
- let target=rocks.find(r=>r.id===droneMotion.targetId);
+ let target=rocks.find(r=>r.hp>0&&r.id===droneMotion.targetId);
  if(!target){target=nearestDroneRock();droneMotion.targetId=target?.id??null;}
  if(!target)return;
  const dx=target.x-droneMotion.x,dy=target.y-23-droneMotion.y,dist=Math.hypot(dx,dy);
@@ -154,7 +155,7 @@ function advanceDrone(dt){
   droneMotion.lastImpact={id:target.id,x:target.x,y:target.y,at:performance.now()};
   droneMotion.flashUntil=performance.now()+270;
   mineRock(target,'drone');
-  if(!rocks.includes(target))droneMotion.targetId=null;
+  if(target.hp<=0)droneMotion.targetId=null;
  }
 }
 
@@ -168,7 +169,7 @@ function poly(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(point
 function rand(x,y,k=1){let z=Math.sin((x*127.1+y*311.7+k*74.7)*.2)*43758.5453;return z-Math.floor(z)}
 // Procedural field visuals live separately from gameplay and economy rules.
 function drawGround(){drawCavernGround(ctx,game.floor);}
-function drawRock(r){drawCavernRock(ctx,r,ORES);}
+function drawRock(r){if(r.hp<=0){ctx.save();ctx.globalAlpha=.74;ctx.filter='brightness(.31) saturate(.36)';drawCavernRock(ctx,r,ORES);ctx.restore();}else drawCavernRock(ctx,r,ORES);}
 function updateTarget(){
  const hud=$('targetHud');
  if(!selectedRock||!rocks.includes(selectedRock)||bossFight){hud.classList.add('hidden');return;}
@@ -223,11 +224,11 @@ function statusEntries(){
 function renderStatusRail(){
  $('statusGroup').innerHTML=statusEntries().map(x=>`<button type="button" class="hud-effect ${x.sub?'hud-effect-timed':''}" data-side="${x.id}" title="${x.name}" aria-label="${x.name}: ${x.value}${x.sub?' '+x.sub:''}"><span class="status-glyph">${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>${x.value}</strong>${x.sub?`<small>${x.sub}</small>`:''}</span>${x.progress!==null?`<i style="--charge:${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
 }
-function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;$('floorCurrentCount').textContent=game.floor;$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&rocks.length===0?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):getFloorProgress(game)+' / '+floorQuota(game.floor)+' WAVES';$('quotaFill').style.width=Math.min(100,getFloorProgress(game)/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
+function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;const travel=floorTravelDisplay(game);$('floorCurrentCount').textContent=travel.label;$('floorCurrentCount').title=travel.title;$('floorCurrentCount').setAttribute('aria-label',travel.title);$('floorCurrentCount').classList.toggle('can-travel',travel.canTravel);$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&waveComplete(rocks)?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):getFloorProgress(game)+' / '+floorQuota(game.floor)+' WAVES';$('quotaFill').style.width=Math.min(100,getFloorProgress(game)/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
  $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
  renderStatusRail();
  $('obeliskQuickState').textContent=game.bossReadyAt>Date.now()?'WAIT':'FIGHT';const itemMeter=chestStatus(game,'item'),relicMeter=chestStatus(game,'relic');$('chestFill').style.height=itemMeter.percent.toFixed(1)+'%';$('starFill').style.height=relicMeter.percent.toFixed(1)+'%';$('itemChestMeter').title='Item chests · '+itemMeter.owned+' ready · '+Math.floor(itemMeter.progress)+' / '+itemMeter.target+' damage';$('relicChestMeter').title='Relic chests · '+relicMeter.owned+' ready · '+Math.floor(relicMeter.progress)+' / '+relicMeter.target+' damage';$('autoFloorState').textContent=!game.autoFloorUnlocked?'LOCK':game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloor);$('autoFloor').classList.toggle('locked',!game.autoFloorUnlocked);$('autoFloor').title=game.autoFloorUnlocked?'Toggle automatic floor advance':'Unlock through Skill Tree after Obelisk '+AUTO_FLOOR_OBELISK_GATE;}
-let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}const bombDelta=Math.min(1,Math.max(0,(now-lastBombTick)/1000));advanceBombRecharge(bombDelta);rechargeSpecialBombs(game,bombDelta);lastBombTick=now;if(bombHeld&&quickDrawer==='bombs'&&!currentMenu&&now>=bombNextHoldAt){if(detonate('single'))bombNextHoldAt=nextBombHoldAt(now);else bombHeld=false;}if(autoBombReady(game,now,bombNextAutoAt,!bossFight&&!currentMenu&&!bombHeld&&rocks.length>0)){detonate('single','basic');bombNextAutoAt=now+AUTO_BOMBER_INTERVAL_MS;}updateHud();if(quickDrawer&&!(quickDrawer==='bombs'&&bombHeld)&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','currencies','hub','chests','relics'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
+let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}const bombDelta=Math.min(1,Math.max(0,(now-lastBombTick)/1000));advanceBombRecharge(bombDelta);rechargeSpecialBombs(game,bombDelta);lastBombTick=now;if(bombHeld&&quickDrawer==='bombs'&&!currentMenu&&now>=bombNextHoldAt){if(detonate('single'))bombNextHoldAt=nextBombHoldAt(now);else bombHeld=false;}if(autoBombReady(game,now,bombNextAutoAt,!bossFight&&!currentMenu&&!bombHeld&&activeRocks(rocks).length>0)){detonate('single','basic');bombNextAutoAt=now+AUTO_BOMBER_INTERVAL_MS;}updateHud();if(quickDrawer&&!(quickDrawer==='bombs'&&bombHeld)&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','currencies','hub','chests','relics'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
 function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
@@ -282,7 +283,7 @@ function renderQuickDrawer(){
   if(selectedBomb!=='basic'&&!specialBombInfo(game,selectedBomb))selectedBomb='basic';
   const selected=selectedBomb==='basic'?null:specialBombInfo(game,selectedBomb);
   const charge=selected?{charges:selected.charges,cap:selected.def.cap,remaining:selected.remaining,full:selected.toFull,progress:selected.charges>=selected.def.cap?100:100*selected.progress/selected.def.recharge,rate:selected.def.recharge}:bombRechargeInfo();
-  const available=charge.charges>0&&!bossFight&&rocks.some(r=>selectedBomb==='basic'||!r.bombMarks?.[selected.def.mark]);
+  const available=charge.charges>0&&!bossFight&&rocks.some(r=>r.hp>0&&(selectedBomb==='basic'||!r.bombMarks?.[selected.def.mark]));
   const unlocked=['basic',...Object.keys(SPECIAL_BOMB_DEFS).filter(id=>specialBombInfo(game,id))];
   const names={basic:'BASIC BOMB',plenty:'BOMB OF PLENTY',experience:'EXPERIENCE BOMB'};
   const symbols={basic:'✹',plenty:'◈',experience:'✦'};
@@ -574,9 +575,9 @@ $('inventoryQuick').onclick=()=>openQuickDrawer('consumables');$('bombDrawerBtn'
  });
  $('statusGroup').addEventListener('click',e=>{const menu=e.target.closest('[data-side]')?.dataset.side;if(menu==='bombs')openQuickDrawer('bombs');else if(menu)openMenu(menu);});
 $('statusToggle').addEventListener('click',()=>{const rail=$('statusGroup');const collapsed=rail.classList.toggle('collapsed');$('statusToggle').setAttribute('aria-expanded',String(!collapsed));$('statusToggle').textContent=collapsed?'▸':'▾';});
- $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('obeliskQuick').onclick=()=>{menuTabs.obelisk='fight';openMenu('obelisk');};$('statsQuick').onclick=()=>openMenu('stats');$('currenciesQuick').onclick=()=>openMenu('currencies');$('floorPair').onclick=()=>openMenu('floors');$('floorCurrentCount').onclick=()=>openMenu('floors');$('eventShortcut').classList.toggle('hidden',!eventActive);
- updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('floorDown').onclick=()=>changeFloor(-1);$('autoFloor').onclick=()=>{if(!game.autoFloorUnlocked){if(game.obeliskLevel>=AUTO_FLOOR_OBELISK_GATE)openMenu('skills');else notice('AUTO-FLOOR LOCKED · REACH OBELISK '+AUTO_FLOOR_OBELISK_GATE);return;}setAutoFloor(game,!game.autoFloor);const advanced=advanceCompletedFloors();save();updateHud();if(!advanced)notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
+ $('shopDock').querySelector('span').innerHTML=navIcons.store;$('menuDock').querySelector('span').innerHTML=navIcons.hub;$('shopDock').onclick=()=>openMenu('store');$('obeliskQuick').onclick=()=>{menuTabs.obelisk='fight';openMenu('obelisk');};$('statsQuick').onclick=()=>openMenu('stats');$('currenciesQuick').onclick=()=>openMenu('currencies');$('floorPair').onclick=()=>openMenu('floors');$('floorCurrentCount').onclick=()=>{if(floorTravelDisplay(game).canTravel)changeFloor(1);else notice(floorTravelDisplay(game).title.toUpperCase());};$('eventShortcut').classList.toggle('hidden',!eventActive);
+ updatePinnedMenus();$('hubBtn').onclick=()=>openMenu('hub');$('floorMapBtn').onclick=()=>openMenu('floors');$('closeBtn').onclick=()=>closeMenu();$('hubCloseDock').onclick=()=>closeMenu();$('backBtn').onclick=()=>currentMenu==='hub'?closeMenu():openMenu('hub');$('floorUp').onclick=()=>changeFloor(1);$('autoFloor').onclick=()=>{if(!game.autoFloorUnlocked){if(game.obeliskLevel>=AUTO_FLOOR_OBELISK_GATE)openMenu('skills');else notice('AUTO-FLOOR LOCKED · REACH OBELISK '+AUTO_FLOOR_OBELISK_GATE);return;}setAutoFloor(game,!game.autoFloor);const advanced=advanceCompletedFloors();save();updateHud();if(!advanced)notice('AUTO FLOOR '+(game.autoFloor?'ENABLED':'DISABLED'));};document.querySelectorAll('.dock button').forEach(b=>{if(b.id!=='hubCloseDock'&&b.id!=='shopDock')b.onclick=()=>openMenu(b.dataset.menu);});window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('confirm').classList.contains('hidden'))$('confirm').classList.add('hidden');else closeMenu();}});let backgroundAt=null;document.addEventListener('visibilitychange',()=>{if(document.hidden){backgroundAt=Date.now();save();}else if(backgroundAt){const summary=offlineGrant(game,(Date.now()-backgroundAt)/1000);backgroundAt=null;if(summary.ore){eventLog('Drone gathered '+summary.ore+' ore while away');notice('DRONE RETURNED WITH '+summary.ore+' ORE');save();updateHud();}}});window.addEventListener('pagehide',save);
 updateHud();requestAnimationFrame(draw);setInterval(tick,250);setInterval(save,8000);
 if(offlineSummary&&offlineSummary.rocks){eventLog('Drone gathered '+offlineSummary.ore+' ore during '+Math.round(offlineSummary.seconds/60)+' minutes away');setTimeout(()=>notice('WELCOME BACK! DRONE MINED '+offlineSummary.ore+' ORE'),500);save();}
 // Expose a small read-only debugging surface for automated smoke tests. Not part of game UI.
-window.__deepMineTest={autoBomber:()=>({unlocked:game.autoBomberUnlocked,on:game.autoBomberOn,points:game.skillPoints}),relics:()=>({owned:structuredClone(game.relicInventory),unopened:game.relicChests,opened:game.relicsOpened}),openRelics:(count,random)=>openRelicChests(game,count,random),chests:()=>({item:chestStatus(game,'item'),relic:chestStatus(game,'relic'),items:structuredClone(game.consumables)}),recordChestDamage:damage=>recordChestDamage(game,damage),fireBombs:mode=>detonate(mode),bombHold:()=>({held:bombHeld,next:bombNextHoldAt}),bombRecharge:()=>bombRechargeInfo(),advanceBombRecharge,renderQuickDrawer,snapshot:()=>structuredClone(game),openMenu,rockCount:()=>rocks.length,wave:()=>({number:waveNumber,size:rocks.length,nextIn:nextWaveAt?secondsToWave(nextWaveAt,performance.now()):0,queued:Boolean(nextWaveAt)}),rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),autoFloorInfo:()=>({unlocked:game.autoFloorUnlocked,on:game.autoFloor,points:game.skillPoints,obelisk:game.obeliskLevel}),drone:()=>({...droneMotion}),swingAt:(x,y)=>swingHand(x,y)};
+window.__deepMineTest={autoBomber:()=>({unlocked:game.autoBomberUnlocked,on:game.autoBomberOn,points:game.skillPoints}),relics:()=>({owned:structuredClone(game.relicInventory),unopened:game.relicChests,opened:game.relicsOpened}),openRelics:(count,random)=>openRelicChests(game,count,random),chests:()=>({item:chestStatus(game,'item'),relic:chestStatus(game,'relic'),items:structuredClone(game.consumables)}),recordChestDamage:damage=>recordChestDamage(game,damage),fireBombs:mode=>detonate(mode),bombHold:()=>({held:bombHeld,next:bombNextHoldAt}),bombRecharge:()=>bombRechargeInfo(),advanceBombRecharge,renderQuickDrawer,snapshot:()=>structuredClone(game),openMenu,rockCount:()=>activeRocks(rocks).length,wave:()=>({number:waveNumber,size:rocks.length,remaining:activeRocks(rocks).length,nextIn:nextWaveAt?secondsToWave(nextWaveAt,performance.now()):0,queued:Boolean(nextWaveAt)}),rocks:()=>rocks.map(r=>({id:r.id,x:r.x,y:r.y,hp:r.hp,ore:r.ore})),hand:()=>({...hand,radius:handReach(game)}),autoFloorInfo:()=>({unlocked:game.autoFloorUnlocked,on:game.autoFloor,points:game.skillPoints,obelisk:game.obeliskLevel}),drone:()=>({...droneMotion}),swingAt:(x,y)=>swingHand(x,y)};
