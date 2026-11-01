@@ -1,3 +1,4 @@
+import {workshopBombMultiplier} from './workshop-v033.js';
 import {relicBonus} from './relics-v028.js';
 // Deep Mine Research — original browser simulation of publicly documented idle-mining mechanics.
 // All balance values below are research approximations, not recovered GameMaker formulas.
@@ -34,7 +35,7 @@ export const pickDamage = s=>Math.round(pickaxeBase(s.upgrades.pick||0)*(1+0.10*
 export const critChance=s=>Math.min(0.65,0.05+0.02*(s.upgrades.crit||0));
 export const damageRoll=(s,r=Math.random)=>Math.max(1,Math.round(pickDamage(s)*(r()<critChance(s)?2+0.1*(s.upgrades.crdmg||0):1)));
 export const saleMultiplier=s=>(1+0.10*(s.upgrades.sell||0))*(1+0.12*(s.artifacts.sales||0))*(1+relicBonus(s,'sell'));
-export const bombDamage=s=>Math.round(pickDamage(s)*5*(1+0.2*(s.upgrades.bomb||0))*(1+0.3*(s.artifacts.blast||0))*(1+relicBonus(s,'bomb')));
+export const bombDamage=s=>Math.round(pickDamage(s)*5*(1+0.2*(s.upgrades.bomb||0))*(1+0.3*(s.artifacts.blast||0))*(1+relicBonus(s,'bomb'))*workshopBombMultiplier(s));
 export const xpMultiplier=s=>(1+0.10*(s.artifacts.growth||0))*(1+relicBonus(s,'xp'));
 export const oreAtFloor=(floor,r=Math.random)=>{let choices=ORES.filter(o=>floor>=o.min&&floor<=o.max);if(!choices.length)choices=ORES.filter(o=>o.min<=floor).slice(-3);return choices[Math.floor(r()*choices.length)]||ORES[0];};
 // Floor unlocks count completed waves, not the number of individual mined rocks.
@@ -94,7 +95,7 @@ export function craftBars(s,oreId,count=1,r=Math.random){const item=ORES.find(o=
 export function sellOre(s,oreId,count=Infinity){const item=ORES.find(o=>o.id===oreId);if(!item)return 0;const qty=Math.min(s.ore[oreId]||0,count);if(qty<=0)return 0;s.ore[oreId]-=qty;const gain=Math.round(qty*item.price*saleMultiplier(s));s.gold+=gain;return gain;}
 export function buyUpgrade(s,id){const def=UPGRADE_DEFS.find(x=>x.id===id);if(!def||s.level<def.req)return false;const lvl=s.upgrades[id]||0;const mat=upgradeMaterials(def,lvl);if(lvl>=def.cap||s.gold<upgradeCost(def,lvl)||(mat&&(s.bars[mat.ore.id]||0)<mat.qty))return false;s.gold-=upgradeCost(def,lvl);if(mat)s.bars[mat.ore.id]-=mat.qty;s.upgrades[id]=lvl+1;return true;}
 export function buyArtifact(s,id){const def=ARTIFACTS.find(x=>x.id===id);if(!def)return false;const lvl=s.artifacts[id]||0;const cost=artifactCost(def,lvl);if(s.prestigePoints<cost||lvl>=def.cap)return false;s.prestigePoints-=cost;s.artifacts[id]++;return true;}
-export function prestige(s){let pts=availablePrestige(s);if(!pts)return 0;let fresh=newGame();const permanent=['levelCap','artifacts','gems','prestigePoints','prestiges','obeliskLevel','bossRemaining','bossReadyAt','drone','droneLevel','dronePoints','totalClicks','totalMined','rocksBroken','settings','log','skillPoints','autoFloorUnlocked','relicInventory','relicsOpened'];for(const key of permanent)fresh[key]=structuredClone(s[key]);fresh.prestigePoints+=pts;fresh.prestiges++;Object.assign(s,fresh);return pts;}
+export function prestige(s){let pts=availablePrestige(s);if(!pts)return 0;let fresh=newGame();const permanent=['levelCap','artifacts','gems','prestigePoints','prestiges','obeliskLevel','bossRemaining','bossReadyAt','drone','droneLevel','dronePoints','totalClicks','totalMined','rocksBroken','settings','log','skillPoints','autoFloorUnlocked','relicInventory','relicsOpened','workshopUpgrades'];for(const key of permanent)fresh[key]=structuredClone(s[key]);fresh.prestigePoints+=pts;fresh.prestiges++;Object.assign(s,fresh);return pts;}
 export function offlineGrant(s,elapsed){const seconds=Math.max(0,Math.min(elapsed,4*3600));if(!s.drone||seconds<2)return {seconds,rocks:0,ore:0};const attacks=Math.min(10000,Math.floor(seconds/(5/Math.max(1,1+0.15*s.droneLevel))));let mined=0;for(let i=0;i<attacks;i++){const ore=oreAtFloor(s.floor,()=>((i*37)%101)/101);let dmg=Math.max(1,Math.floor(pickDamage(s)*(0.65+0.25*s.droneLevel+0.10*s.dronePoints)));if(i%(Math.max(1,Math.ceil(rockHealth(s.floor)/dmg)))===0){s.ore[ore.id]+=1;mined++;s.totalMined++;grantXp(s,1+s.floor);}}
 return {seconds,rocks:mined,ore:mined};}
 export function isValidSave(s){return !!s&&s.version===2&&Number.isFinite(s.gold)&&s.gold>=0&&Number.isFinite(s.level)&&s.level>=1&&Number.isFinite(s.floor)&&s.floor>=1&&ORES.every(o=>Number.isFinite(s.ore?.[o.id])&&s.ore[o.id]>=0)&&UPGRADE_DEFS.every(u=>Number.isInteger(s.upgrades?.[u.id])&&s.upgrades[u.id]>=0&&s.upgrades[u.id]<=u.cap)&&(!s.floorProgress||Object.values(s.floorProgress).every(v=>Number.isSafeInteger(v)&&v>=0))};

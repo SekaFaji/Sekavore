@@ -1,0 +1,2 @@
+/* Workshop purchasing UI; no gameplay artwork changes. */
+.ws-entry{align-items:center}.ws-entry .pm-action{flex:0 0 77px;font-size:9px;padding:7px 3px}.ws-materials{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}.ws-bar{padding:3px 5px;border:1px solid #61505c;color:#ddd3b9;background:#12141d;font-size:9px;white-space:nowrap}.ws-bar b{font-variant-numeric:tabular-nums}.ws-bar.enough{color:#9de2b7;border-color:#507c64}.ws-bar.short{color:#e7b69d;border-color:#886052}@media(max-width:355px){.ws-entry .pm-action{flex-basis:68px}.ws-bar{font-size:8px;padding:2px 3px}}
