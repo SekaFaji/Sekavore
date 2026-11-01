@@ -1,0 +1,4 @@
+/* Floor picker / ascend / clear-counter or unlocked downward travel. */
+.floor-controls .floor-travel-top .control{width:35px!important;min-width:35px!important;min-height:25px!important;height:25px!important;font-size:17px!important;line-height:1}
+.floor-controls .floor-number{min-width:39px;font-variant-numeric:tabular-nums;cursor:default}
+.floor-controls .floor-number.can-travel{cursor:pointer;background:linear-gradient(#99222f,#bc3348)!important;font-size:22px!important}
