@@ -43,7 +43,17 @@ function bombRechargeInfo(){
 }
 function advanceBombRecharge(delta){if(game.bombs>=game.bombMax){game.bombCharge=0;return;}game.bombCharge=Math.max(0,(game.bombCharge||0)+Math.max(0,delta));while(game.bombs<game.bombMax&&game.bombCharge>=bombRechargeDuration()){game.bombs++;game.bombCharge-=bombRechargeDuration();}if(game.bombs>=game.bombMax)game.bombCharge=0;}
 
-function save(){game.lastSaved=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){notice('Browser storage blocked — use Export Save.');}}
+// Persist promptly, but coalesce rapid multi-node hits into one browser storage write.
+let miningSaveTimer=null;
+function save(){
+ if(miningSaveTimer!==null){clearTimeout(miningSaveTimer);miningSaveTimer=null;}
+ game.lastSaved=Date.now();
+ try{localStorage.setItem(SAVE_KEY,JSON.stringify(game));}catch(e){notice('Browser storage blocked - use Export Save.');}
+}
+function scheduleMiningSave(){
+ if(miningSaveTimer!==null)return;
+ miningSaveTimer=setTimeout(()=>{miningSaveTimer=null;save();},250);
+}
 function eventLog(message){game.log.unshift({t:Date.now(),text:message});game.log=game.log.slice(0,80);}
 function notice(message){const el=$('toast');const host=currentMenu?$('overlay'):$('field').parentElement;if(el.parentElement!==host)host.appendChild(el);el.textContent=message;el.classList.add('show');toastUntil=performance.now()+2500;}
 function playSfx(kind='hit'){if(!game.settings.sound)return;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!window.audioContext)window.audioContext=new AC();const ac=window.audioContext;const osc=ac.createOscillator(),gain=ac.createGain();osc.type=kind==='bomb'?'sawtooth':kind==='success'?'triangle':'square';osc.frequency.setValueAtTime(kind==='bomb'?70:kind==='success'?740:170,ac.currentTime);osc.frequency.exponentialRampToValueAtTime(kind==='bomb'?42:kind==='success'?480:85,ac.currentTime+.12);gain.gain.setValueAtTime(.045,ac.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.14);osc.connect(gain);gain.connect(ac.destination);osc.start();osc.stop(ac.currentTime+.16);}catch{}}
@@ -90,7 +100,7 @@ function mineRock(rock,mode='tap',power=1){
   if(!wasReady&&canNextFloor(game))notice('FLOOR READY! ▼ TO MOVE DOWN');
   nextWaveAt=performance.now()+WAVE_REFRESH_MS;droneMotion.targetId=null;
  }
- save();
+ scheduleMiningSave();
 }
 // One sweep hits every rock inside the hand's radius; it never locks to a single rock.
 function swingHand(x=hand.x,y=hand.y){
@@ -169,7 +179,20 @@ function poly(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(point
 function rand(x,y,k=1){let z=Math.sin((x*127.1+y*311.7+k*74.7)*.2)*43758.5453;return z-Math.floor(z)}
 // Procedural field visuals live separately from gameplay and economy rules.
 function drawGround(){drawCavernGround(ctx,game.floor);}
-function drawRock(r){if(r.hp<=0){ctx.save();ctx.globalAlpha=.74;ctx.filter='brightness(.31) saturate(.36)';drawCavernRock(ctx,r,ORES);ctx.restore();}else drawCavernRock(ctx,r,ORES);}
+// Mined nodes remain visible, but their dimmed sprites no longer need a filter
+// and dozens of vector draw calls on every animation frame.
+function drawRock(r){
+ if(r.hp>0){drawCavernRock(ctx,r,ORES);return;}
+ if(!r.minedSprite){
+  const tile=document.createElement('canvas');tile.width=72;tile.height=72;
+  const imageCtx=tile.getContext('2d');imageCtx.imageSmoothingEnabled=false;
+  imageCtx.translate(36-Math.round(r.x),36-Math.round(r.y));
+  imageCtx.globalAlpha=.74;imageCtx.filter='brightness(.31) saturate(.36)';
+  drawCavernRock(imageCtx,r,ORES);
+  r.minedSprite=tile;
+ }
+ ctx.drawImage(r.minedSprite,Math.round(r.x)-36,Math.round(r.y)-36);
+}
 function updateTarget(){
  const hud=$('targetHud');
  if(!selectedRock||!rocks.includes(selectedRock)||bossFight){hud.classList.add('hidden');return;}
@@ -193,7 +216,11 @@ function drawDrone(){
 }
 function drawObelisk(){drawGround();rect(29,44,303,62,'#1b2029bd');rect(37,52,286,2,'#9e8d82');txt('HP  '+fmt(game.bossRemaining)+' / '+fmt(bossMax()),180,63,'#baf7b5',12,'center');txt('ARMOR  '+fmt(bossArmor(game.obeliskLevel)),180,80,'#d1dc9a',11,'center');txt('TIME  '+Math.ceil(Math.max(0,(bossFight.end-performance.now())/1000))+'s',180,97,'#f2c682',11,'center');const p=time;rect(67,476,226,18,'#221b2c');for(let i=0;i<28;i++){let a=rand(i,4);rect(40+i*10,180+a*240,1,2,a>.5?'#ae9c62':'#7e598a');}ctx.save();ctx.translate(180,305+Math.sin(p*2)*3);const glow=ctx.createRadialGradient(0,0,10,0,0,132);glow.addColorStop(0,'#95c1735e');glow.addColorStop(1,'#96e47b00');ctx.fillStyle=glow;ctx.fillRect(-130,-170,260,330);poly([[-52,75],[-62,-51],[-33,-95],[0,-127],[41,-93],[59,-46],[48,78]],'#162c32');poly([[-45,70],[-55,-43],[-27,-84],[-27,63]],'#417c68');poly([[-27,-84],[0,-116],[33,-84],[35,70],[-27,63]],'#273e3c');poly([[35,-79],[51,-39],[44,70],[35,70]],'#81ba67');for(let i=0;i<4;i++){const x=-34+i*19;poly([[x,-45],[x+8,-51],[x+8,43],[x+1,55]],i%2?'#98eb9c':'#d8d47d');rect(x+2,-60+i*7,5,5,'#f5fbab');}rect(-18,-95,35,6,'#b8f7a0');rect(-5,65,11,7,'#adf77c');ctx.restore();txt('TAP THE OBELISK TO ATTACK',180,526,'#f4e0bd',11,'center');}
 function txt(str,x,y,color='#fff',size=12,align='left'){ctx.font='bold '+size+'px monospace';ctx.textAlign=align;ctx.fillStyle='#191622';ctx.fillText(str,x+1,y+2);ctx.fillStyle=color;ctx.fillText(str,x,y);ctx.textAlign='left';}
-function draw(t){const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();processWaveRefresh(t);drawMiningImpacts(ctx);drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
+function draw(t){
+ // Limit draw work to 30 FPS under large waves, heavy effects or overlays.
+ const targetFrameMs=(currentMenu||quickDrawer)?31:(rocks.length>=14||particles.length>35)?31:0;
+ if(targetFrameMs&&t-lastTick<targetFrameMs){requestAnimationFrame(draw);return;}
+ const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();processWaveRefresh(t);drawMiningImpacts(ctx);drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
 function pointerPosition(e){const box=canvas.getBoundingClientRect();return {x:(e.clientX-box.left)*360/box.width,y:(e.clientY-box.top)*602/box.height};}
 canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;const p=pointerPosition(e);
  hand.x=p.x;hand.y=p.y;hand.held=true;holdPoint=p;holdStart=performance.now();lastAttack=holdStart;
@@ -222,14 +249,43 @@ function statusEntries(){
  return data;
 }
 function renderStatusRail(){
- $('statusGroup').innerHTML=statusEntries().map(x=>`<button type="button" class="hud-effect ${x.sub?'hud-effect-timed':''}" data-side="${x.id}" title="${x.name}" aria-label="${x.name}: ${x.value}${x.sub?' '+x.sub:''}"><span class="status-glyph">${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>${x.value}</strong>${x.sub?`<small>${x.sub}</small>`:''}</span>${x.progress!==null?`<i style="--charge:${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
+ const entries=statusEntries(),host=$('statusGroup');
+ const sameStructure=host.children.length===entries.length&&entries.every((entry,i)=>{
+  const node=host.children[i];
+  return node.dataset.side===entry.id&&Boolean(node.querySelector('small'))===Boolean(entry.sub)&&Boolean(node.querySelector('i'))===(entry.progress!==null);
+ });
+ if(sameStructure){
+  // Update values and progress without destroying the whole interactive status rail.
+  for(let i=0;i<entries.length;i++){
+   const data=entries[i],node=host.children[i],value=node.querySelector('strong');
+   if(value.textContent!==data.value)value.textContent=data.value;
+   if(data.sub){const sub=node.querySelector('small');if(sub.textContent!==data.sub)sub.textContent=data.sub;}
+   const label=data.name+': '+data.value+(data.sub?' '+data.sub:'');
+   if(node.getAttribute('aria-label')!==label)node.setAttribute('aria-label',label);
+   if(data.progress!==null){const progress=node.querySelector('i'),charge=data.progress.toFixed(1)+'%';if(progress.style.getPropertyValue('--charge')!==charge)progress.style.setProperty('--charge',charge);}
+  }
+  return;
+ }
+ const markup=entries.map(x=>`<button type="button" class="hud-effect ${x.sub?'hud-effect-timed':''}" data-side="${x.id}" title="${x.name}" aria-label="${x.name}: ${x.value}${x.sub?' '+x.sub:''}"><span class="status-glyph">${statusPixel(x.icon)}</span><span class="hud-effect-body"><strong>${x.value}</strong>${x.sub?`<small>${x.sub}</small>`:''}</span>${x.progress!==null?`<i style="--charge:${x.progress.toFixed(1)}%"></i>`:''}</button>`).join('');
+ setHTMLIfChanged('statusGroup',markup);
+}
+// Preserve existing DOM nodes and focus when text/structure has not changed.
+const lastHtml=new Map();
+function setHTMLIfChanged(id,markup){
+ if(lastHtml.get(id)===markup)return;
+ $(id).innerHTML=markup;lastHtml.set(id,markup);
 }
 function updateHud(){updateTarget();const exp=LVL_REQ(game.level);$('level').textContent='LV '+game.level;$('levelXp').textContent=fmt(game.xp)+' / '+fmt(exp)+' XP';$('xpFill').style.width=Math.min(100,game.xp/exp*100)+'%';$('gold').textContent=fmt(game.gold);$('gems').textContent=fmt(game.gems);$('hudPrestige').textContent=fmt(game.prestigePoints||0);$('floor').textContent=game.floor;const travel=floorTravelDisplay(game);$('floorCurrentCount').textContent=travel.label;$('floorCurrentCount').title=travel.title;$('floorCurrentCount').setAttribute('aria-label',travel.title);$('floorCurrentCount').classList.toggle('can-travel',travel.canTravel);$('floorName').textContent=game.floor<=5?'Stone Mine':game.floor<=10?'Copper Depths':'Crystal Caves';$('quotaText').textContent=nextWaveAt&&waveComplete(rocks)?'WAVE '+secs(Math.max(0,(nextWaveAt-performance.now())/1000)):getFloorProgress(game)+' / '+floorQuota(game.floor)+' WAVES';$('quotaFill').style.width=Math.min(100,getFloorProgress(game)/floorQuota(game.floor)*100)+'%';const resourceCounters=ORES.filter(o=>o.min<=game.highestFloor||(game.ore[o.id]||0)>0).slice(-4);
- $('resourceRows').innerHTML=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
+ const resourceMarkup=resourceCounters.map(o=>`<div class="mineral-count" title="${o.name} ore" aria-label="${o.name} ore: ${fmt(game.ore[o.id]||0)}"><strong>${fmt(game.ore[o.id]||0)}</strong>${pixelOreIcon(o)}</div>`).join('');
+ setHTMLIfChanged('resourceRows',resourceMarkup);
  renderStatusRail();
  $('obeliskQuickState').textContent=game.bossReadyAt>Date.now()?'WAIT':'FIGHT';const itemMeter=chestStatus(game,'item'),relicMeter=chestStatus(game,'relic');$('chestFill').style.height=itemMeter.percent.toFixed(1)+'%';$('starFill').style.height=relicMeter.percent.toFixed(1)+'%';$('itemChestMeter').title='Item chests · '+itemMeter.owned+' ready · '+Math.floor(itemMeter.progress)+' / '+itemMeter.target+' damage';$('relicChestMeter').title='Relic chests · '+relicMeter.owned+' ready · '+Math.floor(relicMeter.progress)+' / '+relicMeter.target+' damage';$('autoFloorState').textContent=!game.autoFloorUnlocked?'LOCK':game.autoFloor?'ON':'OFF';$('autoFloor').classList.toggle('active',game.autoFloorUnlocked&&game.autoFloor);$('autoFloor').classList.toggle('locked',!game.autoFloorUnlocked);$('autoFloor').setAttribute('aria-pressed',String(game.autoFloorUnlocked&&game.autoFloor));$('autoFloor').title=game.autoFloorUnlocked?'Auto Next: '+(game.autoFloor?'ON':'OFF')+' - advance when floor objectives are met':'Unlock Auto Next through Skill Tree after Obelisk '+AUTO_FLOOR_OBELISK_GATE;}
 let lastMenuRender=0,lastDrawerRender=0;function tick(){const now=performance.now();if(!bossFight){if(game.drone){droneClock+=.25;const interval=5/Math.max(1,1+.15*game.droneLevel);if(droneClock>=interval){droneClock=0;droneMotion.ready=true;}}}const bombDelta=Math.min(1,Math.max(0,(now-lastBombTick)/1000));advanceBombRecharge(bombDelta);rechargeSpecialBombs(game,bombDelta);lastBombTick=now;if(bombHeld&&quickDrawer==='bombs'&&!currentMenu&&now>=bombNextHoldAt){if(detonate('single'))bombNextHoldAt=nextBombHoldAt(now);else bombHeld=false;}if(autoBombReady(game,now,bombNextAutoAt,!bossFight&&!currentMenu&&!bombHeld&&activeRocks(rocks).length>0)){detonate('single','basic');bombNextAutoAt=now+AUTO_BOMBER_INTERVAL_MS;}updateHud();if(quickDrawer&&!(quickDrawer==='bombs'&&bombHeld)&&now-lastDrawerRender>1100){renderQuickDrawer();lastDrawerRender=now;}if(currentMenu&&now-lastMenuRender>950&&['upgrades','craft','sell','bag','floors','drones','bombs','obelisk','prestige','artifacts','stats','currencies','hub','chests','relics'].includes(currentMenu)){const sc=$('panelContent').scrollTop;renderMenu();$('panelContent').scrollTop=sc;lastMenuRender=now;}}
-function showMarkup(title,html){$('panelTitle').textContent=title;$('panelContent').innerHTML=html;lastMenuRender=performance.now();}
+function showMarkup(title,html){
+ if($('panelTitle').textContent!==title)$('panelTitle').textContent=title;
+ setHTMLIfChanged('panelContent',html);
+ lastMenuRender=performance.now();
+}
 function cell(name,value){return `<div><strong>${typeof value==='number'?fmt(value):esc(value)}</strong><small>${name}</small></div>`}
 function item(icon,name,desc,meta,btn,label,enabled=true,sub=''){return `<div class="entry"><div class="glyph">${icon}</div><div class="info"><div class="name">${name}</div><div class="desc">${desc}</div><div class="cost">${meta}</div></div><div class="right">${sub?`<div class="level">${sub}</div>`:''}<button class="btn ${enabled?'':'secondary'}" data-act="${btn}" ${!enabled?'disabled':''}>${label}</button></div></div>`}
 // Menu elements are original browser UI components.
@@ -303,7 +359,7 @@ function renderQuickDrawer(){
    `<button type="button" class="bomb-fire-all" data-draw-action="fire-all" ${available?'':'disabled aria-disabled="true"'}>FIRE<br>ALL <small>(${charge.charges})</small></button></div></div>`;
 
  }
- $('drawerContent').innerHTML=html;
+ setHTMLIfChanged('drawerContent',html);
 }
 
 if(!game.sellLocks || typeof game.sellLocks!=='object')game.sellLocks={};
