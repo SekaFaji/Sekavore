@@ -6,6 +6,8 @@ import path from 'node:path';
 // Prevent startup failures caused by missing browser modules in the Pages build.
 const repo=path.resolve(import.meta.dirname,'..');
 const read=filename=>readFileSync(path.join(repo,filename),'utf8');
+// Cache-busting query strings do not change the physical file copied to Pages.
+const assetPath=url=>url.replace(/^\.\//,'').split(/[?#]/,1)[0];
 
 test('Pages artifact list includes all browser JS imports and linked CSS',()=>{
   const workflow=read('.github/workflows/pages.yml');
@@ -20,12 +22,13 @@ test('Pages artifact list includes all browser JS imports and linked CSS',()=>{
   const html=read('index.html');
   ensure('index.html');
   for(const m of html.matchAll(/<link\b[^>]*\bhref=["']([^"']+)["']/g)){
-    if(!m[1].startsWith('http'))ensure(m[1].replace(/^\.\//,''));
+    if(!m[1].startsWith('http'))ensure(assetPath(m[1]));
   }
   const scriptPaths=[...html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)].map(m=>m[1]);
   for(const file of scriptPaths){
     if(file.startsWith('http'))continue;
-    const visit=(filename)=>{
+    const visit=(url)=>{
+      const filename=assetPath(url);
       if(checked.has(filename))return;
       checked.add(filename);
       ensure(filename);
@@ -37,7 +40,7 @@ test('Pages artifact list includes all browser JS imports and linked CSS',()=>{
         visit(path.posix.normalize(path.posix.join(path.posix.dirname(filename),m[1])));
       }
     };
-    visit(file.replace(/^\.\//,''));
+    visit(assetPath(file));
   }
   assert.ok(checked.size>1,'Expected to validate multiple browser modules');
 });
