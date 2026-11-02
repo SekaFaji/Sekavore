@@ -20,7 +20,7 @@ test('Mined nodes are sprite-cached on the node object, not re-filtered each fra
 test('Hud and menus reuse mounted markup when unchanged, and status timers update in place',()=>{
  assert.match(game,/function setHTMLIfChanged\(id,markup\)/);
  for(const id of ['resourceRows','statusGroup','panelContent','drawerContent']){
-  assert.match(game,new RegExp(`setHTMLIfChanged\\\\('${id}',`));
+  assert.match(game,new RegExp(`setHTMLIfChanged\\('${id}',`));
  }
  assert.match(game,/if\(sameStructure\)\{/);
  assert.match(game,/progress\.style\.setProperty\('--charge',charge\)/);
