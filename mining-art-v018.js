@@ -102,11 +102,11 @@ function stone(ctx,x,y,z,pal,seed){
  line(ctx,[[x+z*.46,y-z*.39],[x+z*.20,y+z*.23],[x+z*.48,y+z*.55]],pal.edge,1.5);
  if(seed>1){box(ctx,x-z*.63,y-z*.62,z*.33,2,pal.light)}
 }
-export function drawCavernRock(ctx,r,ores){
- const fresh=impacts.findLast(e=>!e.broken&&e.x===r.x&&e.y===r.y&&(performance.now()-e.born)<140);
+export function drawCavernRock(ctx,r,ores,staticFrame=false){
+ const fresh=staticFrame?null:impacts.findLast(e=>!e.broken&&e.x===r.x&&e.y===r.y&&(performance.now()-e.born)<140);
  const shake=fresh?Math.max(0,1-(performance.now()-fresh.born)/185):0;
- const now=performance.now();
- const hover=Math.sin(now*.00125+r.x*.071+r.y*.039)*.45;
+ const now=staticFrame?0:performance.now();
+ const hover=staticFrame?0:Math.sin(now*.00125+r.x*.071+r.y*.039)*.45;
  const x=Math.round(r.x+(shake?Math.sin(now*.27+r.x)*shake*2.7:0));
  const y=Math.round(r.y+hover+(shake?Math.cos(now*.33+r.y)*shake*1.7:0));
  const z=Math.round(r.size||15),v=(r.variant||0)%4;
@@ -137,7 +137,7 @@ export function drawCavernRock(ctx,r,ores){
  // Each rock has an ore cue, even for basic tin.
  box(ctx,x-z*.55,y+z*.35,3,3,ore.edge);box(ctx,x-z*.47,y+z*.23,2,2,ore.color);
  // Tiny mineral facets shimmer independently of gameplay.
- const fleck=((Math.floor(now/680)+Math.floor(r.x))%5===0);
+ const fleck=!staticFrame&&((Math.floor(now/680)+Math.floor(r.x))%5===0);
  if(v===1||v===2){
   box(ctx,x+z*.1,y-z*.7,3,2,ore.edge);
   box(ctx,x+z*.13,y-z*.68,2,2,ore.color);

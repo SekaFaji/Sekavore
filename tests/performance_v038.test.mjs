@@ -11,11 +11,9 @@ test('Mining batches browser storage writes but explicit saves remain synchronou
  assert.match(game,/nextWaveAt=performance\.now\(\)\+WAVE_REFRESH_MS;droneMotion\.targetId=null;\s*\}\s*scheduleMiningSave\(\);/);
  assert.match(game,/window\.addEventListener\('pagehide',save\)/);
 });
-test('Mined nodes are sprite-cached on the node object, not re-filtered each frame',()=>{
- assert.match(game,/if\(!r\.minedSprite\)\{/);
- assert.match(game,/r\.minedSprite=tile/);
- assert.match(game,/ctx\.drawImage\(r\.minedSprite/);
- assert.match(game,/if\(r\.hp>0\)\{drawCavernRock/);
+test('Mined and live nodes use rendering-only sprite cache',()=>{
+ assert.match(game,/drawCachedRock\(ctx,r,ORES,drawCavernRock,now\)/);
+ assert.match(game,/import \{drawCachedRock\}/);
 });
 test('Hud and menus reuse mounted markup when unchanged, and status timers update in place',()=>{
  assert.match(game,/function setHTMLIfChanged\(id,markup\)/);
@@ -29,5 +27,5 @@ test('Heavy rendering can be reduced without slowing interval-driven game logic'
  assert.match(game,/rocks\.length>=14\|\|particles\.length>35/);
  assert.match(game,/if\(targetFrameMs&&t-lastTick<targetFrameMs\)/);
  assert.match(game,/setInterval\(tick,250\)/);
- assert.match(html,/src="game\.js\?v=0\.38\.0"/);
+ assert.match(html,/src="game\.js\?v=0\.39\.0"/);
 });

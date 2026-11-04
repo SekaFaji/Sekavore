@@ -23,6 +23,6 @@ test('GitHub Pages publishes the art module',()=>{
  const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
  const game=readFileSync(new URL('../game.js',import.meta.url),'utf8');
  assert.match(workflow,/cp .*mining-art-v018\.js/);
- assert.match(game,/from '\.\/mining-art-v018\.js'/);
+ assert.match(game,/from '\.\/mining-art-v018\.js\?v=0\.39\.0'/);
  assert.match(game,/drawMiningImpacts\(ctx\)/)
 });
