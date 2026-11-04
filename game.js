@@ -1,7 +1,7 @@
 import {normalizeWorkshop,buyWorkshopUpgrade} from './workshop-v033.js';
 import {SPECIAL_BOMB_DEFS,normalizeSpecialBombs,specialBombInfo,rechargeSpecialBombs,applySpecialBomb,rockMarkReward} from './special-bombs-v034.js';
 import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,floorOrePopulation,awardWaveClear,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
-import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
+import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js?v=0.39.0';
 import {drawCachedRock} from './mining-sprite-cache-v039.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
 import {floorTravelDisplay,activeRocks,waveComplete} from './floor-controls-v035.js?v=0.37.0';
