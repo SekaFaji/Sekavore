@@ -37,7 +37,7 @@
     warning.id='sekavore-startup-error';
     warning.setAttribute('role','alert');
     warning.style.cssText='position:fixed;z-index:9999;left:8px;right:8px;top:8px;max-width:440px;margin:auto;padding:12px;background:#3d2228;color:#fff;border:3px solid #eab26f;font:13px monospace;box-shadow:0 5px 15px #000b';
-    var heading=document.createElement('strong');heading.textContent='Sekavore could not finish loading (v0.37).';
+    var heading=document.createElement('strong');heading.textContent='Sekavore could not finish loading (v0.39).';
     var detail=document.createElement('p');detail.textContent=reason+' Your saved progress has NOT been cleared. Try reloading the page without clearing site data.';
     detail.style.margin='8px 0 0';
     warning.append(heading,detail);document.body.appendChild(warning);
@@ -51,4 +51,4 @@
   window.setTimeout(function(){if(!window.__sekavoreBooted)showStartupIssue('The game did not initialize.');},8000);
 })();
 </script>
-<script type="module" src="game.js?v=0.38.0"></script></body></html>
+<script type="module" src="game.js?v=0.39.0"></script></body></html>
