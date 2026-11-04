@@ -2,6 +2,7 @@ import {normalizeWorkshop,buyWorkshopUpgrade} from './workshop-v033.js';
 import {SPECIAL_BOMB_DEFS,normalizeSpecialBombs,specialBombInfo,rechargeSpecialBombs,applySpecialBomb,rockMarkReward} from './special-bombs-v034.js';
 import { ORES,UPGRADE_DEFS,ARTIFACTS,LVL_REQ,upgradeCost,upgradeMaterials,artifactCost,pickDamage,saleMultiplier,damageRoll,bombDamage,oreAtFloor,rockHealth,floorQuota,floorOrePopulation,awardWaveClear,canNextFloor,moveFloor,travelToFloor,getFloorProgress,awardRock,grantXp,craftBars,sellOre,buyUpgrade,buyArtifact,prestige,availablePrestige,bossTotal,bossArmor,offlineGrant,newGame,isValidSave,handReach,targetsInReach } from './core.js';
 import {drawCavernGround,drawCavernRock,recordMiningImpact,drawMiningImpacts} from './mining-art-v018.js';
+import {drawCachedRock} from './mining-sprite-cache-v039.js';
 import {WAVE_REFRESH_MS,createWave,secondsToWave} from './mining-waves-v021.js';
 import {floorTravelDisplay,activeRocks,waveComplete} from './floor-controls-v035.js?v=0.37.0';
 import {AUTO_FLOOR_OBELISK_GATE,AUTO_FLOOR_SKILL_COST,SKILL_POINT_GEM_PRICE,normalizeFloorAutomation,purchaseSkillPoint,unlockAutoFloor,setAutoFloor,shouldAutoAdvance} from './floor-auto-v019.js';
@@ -83,7 +84,7 @@ function mineRock(rock,mode='tap',power=1){
  const appliedDamage=Math.min(Math.max(0,rock.hp),Math.max(0,dmg));
  const gainedChests=recordChestDamage(game,appliedDamage);
  if(gainedChests.item||gainedChests.relic){eventLog('Chest meter rewards: '+gainedChests.item+' item, '+gainedChests.relic+' relic');}
- rock.hp-=dmg;recordMiningImpact(rock.x,rock.y,(ORES.find(o=>o.id===rock.ore)||ORES[0]).color,rock.hp<=0);
+ rock.hp-=dmg;rock.hitAt=performance.now();recordMiningImpact(rock.x,rock.y,(ORES.find(o=>o.id===rock.ore)||ORES[0]).color,rock.hp<=0);
  spark(rock.x,rock.y-8,fmt(dmg),dmg>pickDamage(game)?'#ffdb67':'#f1efde',1);
  if(mode==='tap'){game.totalClicks++;playSfx('hit');}
  if(rock.hp>0)return;
@@ -179,20 +180,8 @@ function poly(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(point
 function rand(x,y,k=1){let z=Math.sin((x*127.1+y*311.7+k*74.7)*.2)*43758.5453;return z-Math.floor(z)}
 // Procedural field visuals live separately from gameplay and economy rules.
 function drawGround(){drawCavernGround(ctx,game.floor);}
-// Mined nodes remain visible, but their dimmed sprites no longer need a filter
-// and dozens of vector draw calls on every animation frame.
-function drawRock(r){
- if(r.hp>0){drawCavernRock(ctx,r,ORES);return;}
- if(!r.minedSprite){
-  const tile=document.createElement('canvas');tile.width=72;tile.height=72;
-  const imageCtx=tile.getContext('2d');imageCtx.imageSmoothingEnabled=false;
-  imageCtx.translate(36-Math.round(r.x),36-Math.round(r.y));
-  imageCtx.globalAlpha=.74;imageCtx.filter='brightness(.31) saturate(.36)';
-  drawCavernRock(imageCtx,r,ORES);
-  r.minedSprite=tile;
- }
- ctx.drawImage(r.minedSprite,Math.round(r.x)-36,Math.round(r.y)-36);
-}
+// Each rock image is rebuilt only after real HP changes; hover and hit feedback remain animated.
+function drawRock(r,now){drawCachedRock(ctx,r,ORES,drawCavernRock,now);}
 function updateTarget(){
  const hud=$('targetHud');
  if(!selectedRock||!rocks.includes(selectedRock)||bossFight){hud.classList.add('hidden');return;}
@@ -220,7 +209,7 @@ function draw(t){
  // Limit draw work to 30 FPS under large waves, heavy effects or overlays.
  const targetFrameMs=(currentMenu||quickDrawer)?31:(rocks.length>=14||particles.length>35)?31:0;
  if(targetFrameMs&&t-lastTick<targetFrameMs){requestAnimationFrame(draw);return;}
- const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r);if(game.drone)drawDrone();processWaveRefresh(t);drawMiningImpacts(ctx);drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
+ const dt=Math.min(.08,(t-lastTick)/1000);lastTick=t;time+=dt;frames++;if(bossFight){drawObelisk();if(t>=bossFight.end)stopBoss();}else{if(game.drone)advanceDrone(dt);drawGround();for(const r of rocks)drawRock(r,t);if(game.drone)drawDrone();processWaveRefresh(t);drawMiningImpacts(ctx);drawHand();}particles=particles.filter(p=>p.ttl>0);for(const p of particles){p.ttl-=dt;p.x+=p.dx*dt;p.y+=p.dy*dt;if(p.label)txt(p.label,p.x,p.y,p.color,10,'center');else rect(p.x,p.y,2,3,p.color);}if(t>toastUntil)$('toast').classList.remove('show');if(hand.held&&t-lastAttack>Math.max(80,270-12*(game.upgrades.attack||0))){lastAttack=t;if(bossFight){attackObelisk(damageRoll(game));}else if(holdPoint){swingHand(holdPoint.x,holdPoint.y);}}requestAnimationFrame(draw);}
 function pointerPosition(e){const box=canvas.getBoundingClientRect();return {x:(e.clientX-box.left)*360/box.width,y:(e.clientY-box.top)*602/box.height};}
 canvas.addEventListener('pointerdown',e=>{if(currentMenu||quickDrawer)return;const p=pointerPosition(e);
  hand.x=p.x;hand.y=p.y;hand.held=true;holdPoint=p;holdStart=performance.now();lastAttack=holdStart;
